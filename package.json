@@ -1,0 +1,19 @@
+{
+  "name": "warfield-operation-blackout-aaa",
+  "version": "2.0.0",
+  "description": "AAA Architecture for Modern Military FPS",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "test:environment": "node tools/check-environment.mjs",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@dgreenheck/ez-tree": "^1.1.0",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0"
+  }
+}

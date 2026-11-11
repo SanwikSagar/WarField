@@ -1,0 +1,306 @@
+[
+ {
+  "file": "rifle_0.mp3",
+  "title": "Single Gunshot 5.2.wav",
+  "author": "morganpurkis",
+  "id": "386845",
+  "duration": 0.646349,
+  "license": "CC0"
+ },
+ {
+  "file": "rifle_1.mp3",
+  "title": "Single Gunshot 5.3.wav",
+  "author": "morganpurkis",
+  "id": "391180",
+  "duration": 1.86841,
+  "license": "CC0"
+ },
+ {
+  "file": "rifle_2.mp3",
+  "title": "gunshot 1.wav",
+  "author": "Jakesapp23",
+  "id": "221640",
+  "duration": 2.73066,
+  "license": "CC0"
+ },
+ {
+  "file": "ak_0.mp3",
+  "title": "AK47 Shot",
+  "author": "LeMudCrab",
+  "id": "163457",
+  "duration": 0.598912,
+  "license": "CC0"
+ },
+ {
+  "file": "ak_1.mp3",
+  "title": "An AK-47 being shot // has distinctive metallic kalashnikov-esque report // punchy sounding w/ distant trailing reverb",
+  "author": "serøutōnin--deprivəd",
+  "id": "855843",
+  "duration": 2.28029,
+  "license": "CC0"
+ },
+ {
+  "file": "pistol_0.mp3",
+  "title": "Pocket Pistol gunshot 2 (Outside of room)",
+  "author": "mahecic",
+  "id": "803497",
+  "duration": 1.41198,
+  "license": "CC0"
+ },
+ {
+  "file": "pistol_1.mp3",
+  "title": "Single Pistol Gunshot 2.wav",
+  "author": "morganpurkis",
+  "id": "371440",
+  "duration": 1.13995,
+  "license": "CC0"
+ },
+ {
+  "file": "pistol_2.mp3",
+  "title": "Single Pistol Gunshot 4.2.wav",
+  "author": "morganpurkis",
+  "id": "391846",
+  "duration": 2.47377,
+  "license": "CC0"
+ },
+ {
+  "file": "distant_0.mp3",
+  "title": "Distant Gunshot 4 (Mono).wav",
+  "author": "morganpurkis",
+  "id": "384714",
+  "duration": 3.78367,
+  "license": "CC0"
+ },
+ {
+  "file": "distant_1.mp3",
+  "title": "Distant Gunshot 2 (Mono).wav",
+  "author": "morganpurkis",
+  "id": "384716",
+  "duration": 3.48789,
+  "license": "CC0"
+ },
+ {
+  "file": "distant_2.mp3",
+  "title": "Distant Gunshot 3.wav",
+  "author": "morganpurkis",
+  "id": "384715",
+  "duration": 3.75669,
+  "license": "CC0"
+ },
+ {
+  "file": "magout_0.mp3",
+  "title": "Sniper Mag Released.mp3",
+  "author": "VIPERSTRONG",
+  "id": "655763",
+  "duration": 1.39048,
+  "license": "CC0"
+ },
+ {
+  "file": "magin_0.mp3",
+  "title": "Pushing 50 Cal BMG Round into Magazine",
+  "author": "qubodup",
+  "id": "855580",
+  "duration": 0.325979,
+  "license": "CC0"
+ },
+ {
+  "file": "magin_1.mp3",
+  "title": "Assault Rifle Reload",
+  "author": "qubodup",
+  "id": "815879",
+  "duration": 1.86986,
+  "license": "CC0"
+ },
+ {
+  "file": "charge_0.mp3",
+  "title": "Pulling and Releasing Barrett M82A1 Charging Handle to Load Round 2",
+  "author": "qubodup",
+  "id": "855599",
+  "duration": 0.856563,
+  "license": "CC0"
+ },
+ {
+  "file": "slide_0.mp3",
+  "title": "glock.wav",
+  "author": "hiramjustus",
+  "id": "55340",
+  "duration": 1.30565,
+  "license": "CC0"
+ },
+ {
+  "file": "dryfire_0.mp3",
+  "title": "A rifle being dry fired once",
+  "author": "serøutōnin--deprivəd",
+  "id": "725402",
+  "duration": 0.524195,
+  "license": "CC0"
+ },
+ {
+  "file": "shell_0.mp3",
+  "title": "Small_Bullet_Very_Soft_Hit_07",
+  "author": "BlondPanda",
+  "id": "778028",
+  "duration": 0.302917,
+  "license": "CC0"
+ },
+ {
+  "file": "shell_1.mp3",
+  "title": "Recording.m4a",
+  "author": "supreme1197",
+  "id": "516678",
+  "duration": 1.32354,
+  "license": "CC0"
+ },
+ {
+  "file": "step_grass_0.mp3",
+  "title": "Footstep_Grass_5.wav",
+  "author": "GiocoSound",
+  "id": "421135",
+  "duration": 0.506,
+  "license": "CC0"
+ },
+ {
+  "file": "step_grass_1.mp3",
+  "title": "FX_001_footstep_grass_l.wav",
+  "author": "d00121058",
+  "id": "390760",
+  "duration": 0.46,
+  "license": "CC0"
+ },
+ {
+  "file": "step_grass_2.mp3",
+  "title": "Grassy Footstep 4",
+  "author": "OwlStorm",
+  "id": "151235",
+  "duration": 0.501224,
+  "license": "CC0"
+ },
+ {
+  "file": "step_grass_3.mp3",
+  "title": "snd_footsteps_grass_JE-01.wav",
+  "author": "jevans27",
+  "id": "563529",
+  "duration": 0.823146,
+  "license": "CC0"
+ },
+ {
+  "file": "step_gravel_0.mp3",
+  "title": "Knight Right Footstep on Gravel 5 (With Chainmail)",
+  "author": "Ali_6868",
+  "id": "384890",
+  "duration": 0.513537,
+  "license": "CC0"
+ },
+ {
+  "file": "step_gravel_1.mp3",
+  "title": "Right Gravel Footstep 5",
+  "author": "Ali_6868",
+  "id": "384880",
+  "duration": 0.571859,
+  "license": "CC0"
+ },
+ {
+  "file": "step_gravel_2.mp3",
+  "title": "FX_003_footstep_gravel_l.wav",
+  "author": "d00121058",
+  "id": "390758",
+  "duration": 0.3,
+  "license": "CC0"
+ },
+ {
+  "file": "step_snow_0.mp3",
+  "title": "Footstep in the snow_02 [RAW]",
+  "author": "cabled_mess",
+  "id": "384422",
+  "duration": 1.08872,
+  "license": "CC0"
+ },
+ {
+  "file": "step_concrete_0.mp3",
+  "title": "snd_footsteps_concrete.wav",
+  "author": "gristi",
+  "id": "562192",
+  "duration": 1.12369,
+  "license": "CC0"
+ },
+ {
+  "file": "impact_dirt_0.mp3",
+  "title": "Single Rock hit dirt 2.wav",
+  "author": "worthahep88",
+  "id": "319229",
+  "duration": 1.51467,
+  "license": "CC0"
+ },
+ {
+  "file": "impact_metal_0.mp3",
+  "title": "knife throw.wav",
+  "author": "nicktermer",
+  "id": "259563",
+  "duration": 0.233424,
+  "license": "CC0"
+ },
+ {
+  "file": "impact_metal_1.mp3",
+  "title": "Small_Bullet_Very_Soft_Hit_07",
+  "author": "BlondPanda",
+  "id": "778028",
+  "duration": 0.302917,
+  "license": "CC0"
+ },
+ {
+  "file": "amb_rain_0.mp3",
+  "title": "Rain at night medium.wav",
+  "author": "jgxxx",
+  "id": "704395",
+  "duration": 104.065,
+  "license": "CC0"
+ },
+ {
+  "file": "amb_forest_0.mp3",
+  "title": "Strong Wind",
+  "author": "florianreichelt",
+  "id": "459981",
+  "duration": 43.5341,
+  "license": "CC0"
+ },
+ {
+  "file": "amb_wind_0.mp3",
+  "title": "Looping Gentle Wind Ambience on an Open Desert Plain.wav",
+  "author": "dhallcomposer",
+  "id": "697217",
+  "duration": 41.1429,
+  "license": "CC0"
+ },
+ {
+  "file": "amb_snow_0.mp3",
+  "title": "city ambiance heavy snow wind.wav",
+  "author": "itinerantmonk108",
+  "id": "617560",
+  "duration": 34.8696,
+  "license": "CC0"
+ },
+ {
+  "file": "explosion_0.mp3",
+  "title": "Distant Explosion",
+  "author": "danlucaz",
+  "id": "517747",
+  "duration": 1.71828,
+  "license": "CC0"
+ },
+ {
+  "file": "explosion_1.mp3",
+  "title": "Distant Explosion",
+  "author": "Mr_KeybOred",
+  "id": "372086",
+  "duration": 4.38163,
+  "license": "CC0"
+ },
+ {
+  "file": "grunt_0.mp3",
+  "title": "Mask Grunt Sound",
+  "author": "Hoggington",
+  "id": "536372",
+  "duration": 0.669229,
+  "license": "CC0"
+ }
+]
