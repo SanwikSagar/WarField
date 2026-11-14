@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import * as THREE from '/node_modules/three/build/three.module.js';
+import { mergeGeometries } from '/node_modules/three/examples/jsm/utils/BufferGeometryUtils.js';
 import { TextureFactory } from '../utils/TextureFactory.js';
 
 /**
@@ -34,6 +34,8 @@ export class Deco {
             if (!merged) continue;
             const mesh = new THREE.Mesh(merged, mat);
             mesh.castShadow = false; mesh.receiveShadow = true;   // trim is small; skip it in the shadow pass
+            // level-wide batch: keep it out of the per-item scenery LOD (its bbox centre is the map centre)
+            mesh.userData.environmentManaged = true;
             this.group.add(mesh);
             this.disposables.push(merged);
         }

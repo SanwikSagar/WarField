@@ -4,7 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WARFIELD: Operation Blackout</title>
-    <link rel="stylesheet" href="/src/ui/styles.css">
+    <link rel="stylesheet" href="/src/ui/styles.css?v=reference-menu-14">
+    <link rel="stylesheet" href="/src/ui/frontline.css?v=3">
+    <link rel="stylesheet" href="/src/ui/story.css?v=2">
+    <link rel="stylesheet" href="/src/ui/campaign.css?v=3">
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "/node_modules/three/build/three.module.js",
+            "three/examples/jsm/": "/node_modules/three/examples/jsm/",
+            "@dgreenheck/ez-tree": "/node_modules/@dgreenheck/ez-tree/build/ez-tree.es.js"
+        }
+    }
+    </script>
 </head>
 <body>
     <!-- WebGL canvas is appended here by the Renderer -->
@@ -22,21 +34,20 @@
         <div class="menu-bg-fade"></div>
         <div class="menu-content">
             <div class="title-block">
-                <div class="title-eyebrow">VARENCIA CONFLICT // CLASSIFIED</div>
+                <div class="title-season"><span class="ts-badge">SEASON 1</span><span class="ts-cadence" id="season-cadence">NEW EPISODE EVERY MONTH</span></div>
                 <h1 class="title-main">WARFIELD</h1>
                 <div class="title-sub">OPERATION BLACKOUT</div>
-                <div class="title-rule"></div>
             </div>
 
             <nav class="menu-nav" id="menu-nav">
                 <button class="menu-item" data-action="continue">
                     <span class="mi-index">01</span><span class="mi-label">Continue</span><span class="mi-meta" id="continue-meta"></span>
                 </button>
-                <button class="menu-item" data-action="new">
-                    <span class="mi-index">02</span><span class="mi-label">New Campaign</span><span class="mi-meta"></span>
-                </button>
                 <button class="menu-item" data-action="missions">
-                    <span class="mi-index">03</span><span class="mi-label">Mission Selection</span><span class="mi-meta"></span>
+                    <span class="mi-index">02</span><span class="mi-label">Campaign</span><span class="mi-meta" id="campaign-meta"></span>
+                </button>
+                <button class="menu-item" data-action="new">
+                    <span class="mi-index">03</span><span class="mi-label">New Game</span><span class="mi-meta"></span>
                 </button>
                 <button class="menu-item" data-action="settings">
                     <span class="mi-index">04</span><span class="mi-label">Settings</span><span class="mi-meta"></span>
@@ -45,14 +56,35 @@
                     <span class="mi-index">05</span><span class="mi-label">Credits</span><span class="mi-meta"></span>
                 </button>
                 <button class="menu-item" data-action="exit">
-                    <span class="mi-index">06</span><span class="mi-label">Exit Game</span><span class="mi-meta"></span>
+                    <span class="mi-index">06</span><span class="mi-label">Quit</span><span class="mi-meta"></span>
                 </button>
             </nav>
         </div>
 
+        <aside class="menu-feature" id="menu-feature" aria-label="Latest episode">
+            <div class="mf-card" id="mf-card">
+                <div class="mf-art" id="mf-art"><span class="mf-badge" id="mf-badge">NEW EPISODE</span></div>
+                <div class="mf-body">
+                    <div class="mf-eyebrow" id="mf-eyebrow">EPISODE 06 · VEYRA CITY</div>
+                    <div class="mf-title" id="mf-title">City Under Fire</div>
+                    <p class="mf-text" id="mf-text"></p>
+                    <button class="mf-play" id="mf-play">PLAY EPISODE <span>▸</span></button>
+                </div>
+            </div>
+            <div class="mf-next" id="mf-next">
+                <div class="mfn-label">NEXT EPISODE</div>
+                <div class="mfn-title" id="mfn-title"></div>
+                <div class="mfn-count" id="mfn-count"></div>
+            </div>
+            <div class="mf-progress">
+                <div class="mfp-row"><span>SEASON PROGRESS</span><b id="mfp-val">0 / 6</b></div>
+                <div class="mfp-track" id="mfp-track"></div>
+            </div>
+        </aside>
+
         <div class="menu-footer">
-            <div class="footer-left">BUILD 2.0.0 &nbsp;//&nbsp; THREE.JS WebGL2 &nbsp;//&nbsp; SINGLE-PLAYER CAMPAIGN</div>
-            <div class="footer-right">"Some missions are about winning. Others are about what you are willing to lose."</div>
+            <div class="footer-controls"><span class="hint"><kbd class="k-kbm">↵</kbd><kbd class="k-pad">A</kbd>SELECT</span><span class="hint"><kbd class="k-kbm">Esc</kbd><kbd class="k-pad">B</kbd>BACK</span></div>
+            <div class="footer-build">WARFIELD · S1 BUILD 2026.11</div>
         </div>
     </div>
 
@@ -60,14 +92,16 @@
     <div id="mission-select" class="screen panel-screen hidden">
         <div class="panel">
             <div class="panel-header">
-                <h2>MISSION SELECTION</h2>
-                <button class="panel-close" data-back="menu">✕</button>
+                <h2>CAMPAIGN</h2>
+                <div class="panel-sub">SEASON 1 — OPERATION BLACKOUT · NEW EPISODE EVERY MONTH</div>
+                <button class="panel-close" data-back="menu"><span class="back-arrow">‹</span> Back <kbd class="keycap">Esc</kbd></button>
             </div>
-            <div class="mission-list" id="mission-list"></div>
+            <div class="mission-list" id="mission-list" role="listbox" aria-label="Chapters"></div>
+            <div class="ds-desc" id="difficulty-desc"></div>
             <div class="panel-footer">
                 <div class="difficulty-select">
                     <span class="ds-label">DIFFICULTY</span>
-                    <div class="ds-options" id="difficulty-options">
+                    <div class="ds-options" id="difficulty-options" role="radiogroup" aria-label="Difficulty">
                         <button data-diff="recruit">Recruit</button>
                         <button data-diff="regular" class="active">Regular</button>
                         <button data-diff="veteran">Veteran</button>
@@ -76,6 +110,7 @@
                 </div>
                 <button class="btn-primary" id="deploy-btn">DEPLOY</button>
             </div>
+            <div class="hint-bar"><span class="hint"><kbd class="k-kbm">↑ ↓</kbd><kbd class="k-pad">D-PAD</kbd>CHOOSE</span><span class="hint"><kbd class="k-kbm">← →</kbd><kbd class="k-pad">D-PAD</kbd>DIFFICULTY</span><span class="hint"><kbd class="k-kbm">↵</kbd><kbd class="k-pad">A</kbd>SELECT</span><span class="hint"><kbd class="k-kbm">Esc</kbd><kbd class="k-pad">B</kbd>BACK</span></div>
         </div>
     </div>
 
@@ -84,15 +119,19 @@
         <div class="panel">
             <div class="panel-header">
                 <h2>SETTINGS</h2>
-                <button class="panel-close" data-back="menu">✕</button>
+                <button class="panel-close" data-back="menu"><span class="back-arrow">‹</span> Back <kbd class="keycap">Esc</kbd></button>
             </div>
-            <div class="settings-tabs" id="settings-tabs">
+            <div class="settings-tabs" id="settings-tabs" role="tablist">
                 <button class="stab active" data-tab="graphics">Graphics</button>
                 <button class="stab" data-tab="audio">Audio</button>
                 <button class="stab" data-tab="controls">Controls</button>
                 <button class="stab" data-tab="accessibility">Accessibility</button>
             </div>
             <div class="settings-body" id="settings-body"></div>
+            <div class="settings-footer">
+                <button class="btn-ghost" id="settings-reset">Reset tab to defaults</button>
+                <div class="hint-bar"><span class="hint"><kbd class="k-kbm">Q</kbd><kbd class="k-kbm">E</kbd><kbd class="k-pad">LB</kbd><kbd class="k-pad">RB</kbd>TABS</span><span class="hint"><kbd class="k-kbm">↑ ↓</kbd><kbd class="k-pad">D-PAD</kbd>MOVE</span><span class="hint"><kbd class="k-kbm">← →</kbd><kbd class="k-pad">D-PAD</kbd>ADJUST</span><span class="hint"><kbd class="k-kbm">Esc</kbd><kbd class="k-pad">B</kbd>BACK</span></div>
+            </div>
         </div>
     </div>
 
@@ -101,7 +140,7 @@
         <div class="panel">
             <div class="panel-header">
                 <h2>CREDITS</h2>
-                <button class="panel-close" data-back="menu">✕</button>
+                <button class="panel-close" data-back="menu"><span class="back-arrow">‹</span> Back <kbd class="keycap">Esc</kbd></button>
             </div>
             <div class="credits-body">
                 <div class="credits-logo">WARFIELD<br><span>OPERATION BLACKOUT</span></div>
@@ -130,12 +169,14 @@
             <div class="briefing-code" id="briefing-code">MISSION 01</div>
             <h2 class="briefing-title" id="briefing-title">MISSING SIGNAL</h2>
             <div class="briefing-region" id="briefing-region">WILDLANDS &nbsp;//&nbsp; 25 MIN</div>
+            <div class="briefing-recap" id="briefing-recap"><div class="br-label">PREVIOUSLY ON WARFIELD</div><p id="briefing-recap-text"></p></div>
             <p class="briefing-text" id="briefing-text"></p>
             <div class="briefing-objectives" id="briefing-objectives"></div>
             <div class="briefing-actions">
                 <button class="btn-ghost" id="briefing-back">BACK</button>
                 <button class="btn-primary" id="briefing-deploy">DEPLOY ▸</button>
             </div>
+            <div class="hint-bar"><span class="hint"><kbd class="k-kbm">↵</kbd><kbd class="k-pad">A</kbd>DEPLOY</span><span class="hint"><kbd class="k-kbm">Esc</kbd><kbd class="k-pad">B</kbd>BACK</span></div>
         </div>
     </div>
 
@@ -151,6 +192,7 @@
                 <button class="menu-item" data-pause="abort"><span class="mi-label">Abort to Main Menu</span></button>
             </nav>
             <div class="pause-stats" id="pause-stats"></div>
+            <div class="hint-bar"><span class="hint"><kbd class="k-kbm">↑ ↓</kbd><kbd class="k-pad">D-PAD</kbd>CHOOSE</span><span class="hint"><kbd class="k-kbm">↵</kbd><kbd class="k-pad">A</kbd>SELECT</span><span class="hint"><kbd class="k-kbm">Esc</kbd><kbd class="k-pad">B</kbd>RESUME</span></div>
         </div>
     </div>
 
@@ -160,6 +202,7 @@
             <div class="complete-eyebrow">MISSION COMPLETE</div>
             <h2 class="complete-title" id="complete-title">MISSING SIGNAL</h2>
             <div class="complete-stats" id="complete-stats"></div>
+            <div class="hint-bar centered"><span class="hint"><kbd class="k-kbm">↵</kbd><kbd class="k-pad">A</kbd>CONTINUE</span><span class="hint"><kbd class="k-kbm">Esc</kbd><kbd class="k-pad">B</kbd>MAIN MENU</span></div>
             <div class="complete-actions">
                 <button class="btn-ghost" id="complete-menu">MAIN MENU</button>
                 <button class="btn-primary" id="complete-next">NEXT MISSION ▸</button>
@@ -169,6 +212,7 @@
 
     <!-- ══════════════════ GAMEPLAY HUD ══════════════════ -->
     <div id="hud" class="hidden">
+        <div id="vitals-vignette"></div>
         <div id="crosshair">
             <div class="ch-line ch-top"></div>
             <div class="ch-line ch-bottom"></div>
@@ -187,6 +231,7 @@
         </div>
 
         <div class="hud-top-right">
+            <div id="compass-heading">000</div>
             <div id="compass"><div id="compass-strip"></div></div>
             <div id="intel-counter">INTEL <span id="intel-count">0</span></div>
         </div>
@@ -211,11 +256,12 @@
                     <span id="ammo-current">30</span>
                     <span class="ammo-reserve">/ <span id="ammo-reserve">180</span></span>
                 </div>
+                <div id="ammo-hint"></div>
                 <div class="reload-indicator" id="reload-indicator"><div class="reload-fill" id="reload-fill"></div></div>
             </div>
         </div>
 
-        <div id="interaction-prompt" class="hidden">[E] <span id="interaction-text">Interact</span></div>
+        <div id="interaction-prompt" class="hidden"><kbd class="keycap">E</kbd><span id="interaction-text">Interact</span></div>
         <div id="subtitle-box" class="hidden"><span id="subtitle-speaker"></span><span id="subtitle-text"></span></div>
         <div id="squad-status"></div>
         <div id="damage-direction"></div>

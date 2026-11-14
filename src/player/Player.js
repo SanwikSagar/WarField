@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from '/node_modules/three/build/three.module.js';
 import { PlayerMovement } from './PlayerMovement.js';
 import { PlayerHealth } from './PlayerHealth.js';
 import { WeaponManager } from '../weapons/WeaponManager.js';

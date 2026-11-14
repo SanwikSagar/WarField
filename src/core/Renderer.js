@@ -1,11 +1,11 @@
-import * as THREE from 'three';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
-import { SSRPass } from 'three/examples/jsm/postprocessing/SSRPass.js';
+import * as THREE from '/node_modules/three/build/three.module.js';
+import { EffectComposer } from '/node_modules/three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from '/node_modules/three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from '/node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from '/node_modules/three/examples/jsm/postprocessing/ShaderPass.js';
+import { OutputPass } from '/node_modules/three/examples/jsm/postprocessing/OutputPass.js';
+import { GTAOPass } from '/node_modules/three/examples/jsm/postprocessing/GTAOPass.js';
+import { SSRPass } from '/node_modules/three/examples/jsm/postprocessing/SSRPass.js';
 
 /**
  * Final color-grade / lens pass applied after bloom.
@@ -87,7 +87,7 @@ const GradeShader = {
 const dpr = Math.min(window.devicePixelRatio || 1, 2);
 const QUALITY = {
     low:    { pixelRatio: 1.0,  shadow: 1024, bloom: false, ssr: false, msaa: 2, shadowType: THREE.PCFShadowMap,     grassMul: 0.55, treeMul: 0.6,  terrainSeg: 150,  treeLod: [34, 78, 185],  treeShadowLods: [0],       lodCount: 3, grassDist: 70, shadowExtent: 44, fieldMul: 0.25, fieldArea: 40, bushNear: 12 },
-    medium: { pixelRatio: 1.0,  shadow: 1024, bloom: false, ssr: true, msaa: 4, shadowType: THREE.PCFShadowMap,     grassMul: 0.8,  treeMul: 0.85, terrainSeg: 170, treeLod: [40, 92, 210],  treeShadowLods: [0, 1],    lodCount: 3, grassDist: 85, shadowExtent: 52, fieldMul: 0.55, fieldArea: 46 },
+    medium: { pixelRatio: 1.0,  shadow: 1024, bloom: true, ssr: false, msaa: 4, shadowType: THREE.PCFShadowMap,     grassMul: 0.8,  treeMul: 0.85, terrainSeg: 170, treeLod: [40, 92, 210],  treeShadowLods: [0, 1],    lodCount: 3, grassDist: 85, shadowExtent: 52, fieldMul: 0.55, fieldArea: 46 },
     high:   { pixelRatio: Math.min(dpr, 1.5), shadow: 2048, bloom: true, ssr: true, msaa: 4, shadowType: THREE.PCFSoftShadowMap, grassMul: 1.0, treeMul: 1.0, terrainSeg: 200, treeLod: [46, 105, 235], treeShadowLods: [0, 1], lodCount: 3, grassDist: 105, shadowExtent: 60, fieldMul: 1.0, fieldArea: 54, bushNear: 24 },
     extreme: { pixelRatio: dpr, shadow: 4096, bloom: true, ssr: true, msaa: 4, ao: true, shadowType: THREE.PCFSoftShadowMap, grassMul: 1.7, treeMul: 1.5, terrainSeg: 300, treeLod: [62, 140, 300], treeShadowLods: [0, 1, 2], lodCount: 3, grassDist: 150, shadowExtent: 80, fieldMul: 2.1, fieldArea: 74, bushNear: 45, fx: 1.6 },
     ultra:  { pixelRatio: dpr,  shadow: 4096, bloom: true,  ssr: true, msaa: 4, shadowType: THREE.PCFSoftShadowMap, grassMul: 1.3,  treeMul: 1.15, terrainSeg: 240, treeLod: [52, 118, 260], treeShadowLods: [0, 1],    lodCount: 3, grassDist: 125, shadowExtent: 68, fieldMul: 1.4, fieldArea: 62, bushNear: 30 }
@@ -102,7 +102,9 @@ export function detectGPUTier() {
     let rendererStr = '';
     try {
         const c = document.createElement('canvas');
-        const gl = c.getContext('webgl2') || c.getContext('webgl');
+        // ask for the same GPU the game will render on (hybrid laptops otherwise report the integrated one)
+        const opts = { powerPreference: 'high-performance' };
+        const gl = c.getContext('webgl2', opts) || c.getContext('webgl', opts);
         if (gl) {
             const dbg = gl.getExtension('WEBGL_debug_renderer_info');
             if (dbg) rendererStr = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '';
@@ -274,6 +276,15 @@ export class Renderer {
     }
 
     setExposure(v) { this.renderer.toneMappingExposure = v; }
+
+    /** Per-level colour grade: { saturation, contrast, vignette }. Omitted fields return to the defaults. */
+    setGrade(g = {}) {
+        const u = this.passes.grade && this.passes.grade.uniforms;
+        if (!u) return;
+        u.uSaturation.value = g.saturation ?? 1.1;
+        u.uContrast.value = g.contrast ?? 1.05;
+        u.uVignette.value = g.vignette ?? 0.55;
+    }
 
     setGrain(amount) {
         if (this.passes.grade) this.passes.grade.uniforms.uGrain.value = amount;

@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from '/node_modules/three/build/three.module.js';
 
 export function relocatePathFoliage(point, segments, move, margin = 1.1) {
     let closest = Infinity, selected = null, px = 0, pz = 0;

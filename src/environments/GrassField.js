@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from '/node_modules/three/build/three.module.js';
 import { bakeImpostor } from './Impostors.js';
 import { makePathFoliageMap } from './PathFoliage.js';
 
@@ -83,7 +83,7 @@ function makeMaterial(shared, p) {
             uMaskInv: { value: p.inv ? 1 : 0 }
         });
         shader.vertexShader = `
-            uniform vec3 uCam; uniform float uTime, uScale, uArea, uMaxDist, uMinDist, uBound, uWindAmp, uGroundSize, uMaskInv;
+            uniform vec3 uCam; uniform float uTime, uScale, uArea, uMaxDist, uMinDist, uBound, uWindAmp, uGroundSize, uMaskInv, uBright;
             uniform vec3 uColA, uColB; uniform vec4 uMaskP; uniform vec2 uMaskT, uDen;
             uniform sampler2D uMask, uHF, uExclusion, uPathFlow; uniform float uHFSize, uHFN, uPathShift;
             vec2 grassAnchor(vec3 seed) {
@@ -126,7 +126,7 @@ function makeMaterial(shared, p) {
                 float gpatch = 0.5 + 0.5 * sin(gwp.x * 0.09 + 1.3) * sin(gwp.y * 0.11 + 0.4)
                              + 0.25 * sin(gwp.x * 0.31 + gwp.y * 0.27);
                 vec3 gtint = mix(uColA, uColB, clamp(gpatch * 0.55 + (gh1 - 0.5) * 0.6 + (1.0 - gden) * 0.45, 0.0, 1.0));
-                vColor.rgb *= gtint * vec3(0.5, 0.64, 0.4) * (0.24 + 0.1 * gh2);
+                vColor.rgb *= gtint * vec3(0.5, 0.64, 0.4) * (0.24 + 0.1 * gh2) * uBright;
             `)
             .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
                 float normalYaw = ghash(instanceMatrix[3].zxy * 37.3 + 5.1) * 6.2832;
@@ -204,6 +204,7 @@ export function buildGrassField(ctx, v, circles) {
     exclusion.needsUpdate = true;
     const shared = {
         uCam: { value: new THREE.Vector3() },
+        uBright: { value: f.bright ?? 1 },   // forest default is very dark; open biomes raise it
         uTime: { value: 0 },
         uBound: { value: bounds },
         uExclusion: { value: exclusion },

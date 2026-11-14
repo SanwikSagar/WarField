@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from '/node_modules/three/build/three.module.js';
 import { globalEvents } from '../core/EventManager.js';
 import { createCharacter, hasCharacters } from '../core/CharacterFactory.js';
 
@@ -97,7 +97,7 @@ class SquadMember {
 
     _buildModel() {
         // Real character model (dark clothing = ally team)
-        const kind = { Hayes: 'army1', Ethan: 'army1', Maya: 'soldier' }[this.name] || 'army1';
+        const kind = { Hayes: 'army1', Ethan: 'army1', Maya: 'soldier', Reyes: 'soldier' }[this.name] || 'army1';
         const ch = hasCharacters() ? createCharacter(kind, 'ally', this.name === 'Maya' ? 'm5scw' : 'urgi') : null;
         if (ch) {
             this.char = ch; this.group = ch.root; this.materials = ch.materials;

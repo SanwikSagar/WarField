@@ -1,0 +1,154 @@
+/* ═══════════════════════════════════════════════════════════════════
+   WARFIELD — Main menu lockup, featured episode, campaign hub
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Episode key-art swatches (CSS-only, one per biome) */
+[data-biome="wildlands"] { --art: linear-gradient(160deg, #3b5a4c 0%, #1d2d27 55%, #0b1210 100%); --art-glow: #9fc7a5; }
+[data-biome="dustland"]  { --art: linear-gradient(160deg, #c9925a 0%, #7a4f2c 50%, #2a1a10 100%); --art-glow: #ffd29a; }
+[data-biome="frostland"] { --art: linear-gradient(160deg, #c4d6e4 0%, #6b8296 50%, #1b2632 100%); --art-glow: #e6f3ff; }
+[data-biome="deadzone"]  { --art: linear-gradient(160deg, #8a8a84 0%, #4a4a46 50%, #161615 100%); --art-glow: #e0ddd2; }
+[data-biome="city"]      { --art: linear-gradient(170deg, #f0a46a 0%, #a2566a 40%, #2b2a44 75%, #0d0e18 100%); --art-glow: #ffc48a; }
+
+/* ── Title lockup ── */
+#main-menu .title-block { margin-bottom: 4.5vh; }
+.title-season { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; animation: railItemIn .7s cubic-bezier(.16, 1, .3, 1) both; }
+.ts-badge {
+    font: 600 10px var(--font-mono); letter-spacing: .28em; padding: 4px 9px 3px;
+    color: #120a02; background: var(--accent); clip-path: polygon(0 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+}
+.ts-cadence { font: 10px var(--font-mono); letter-spacing: .28em; color: rgba(213, 217, 221, .6); }
+#main-menu .title-main { animation: titleIn 1.2s cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes titleIn { from { opacity: 0; letter-spacing: .5em; filter: blur(6px); } to { opacity: 1; letter-spacing: .3em; filter: none; } }
+#main-menu .title-sub {
+    display: block;
+    margin-top: 10px; font: 500 13px var(--font-mono); letter-spacing: .62em; color: rgba(213, 217, 221, .72);
+    animation: railItemIn .9s cubic-bezier(.16, 1, .3, 1) .2s both;
+}
+#main-menu .menu-item:nth-child(6) { animation-delay: .35s; }
+
+/* soft gradient behind the rails so text stays legible over any backdrop */
+#main-menu .menu-bg-fade {
+    background:
+        linear-gradient(90deg, rgba(3, 5, 7, .82) 0%, rgba(3, 5, 7, .45) 32%, rgba(3, 5, 7, 0) 52%),
+        linear-gradient(270deg, rgba(3, 5, 7, .75) 0%, rgba(3, 5, 7, .2) 28%, rgba(3, 5, 7, 0) 40%),
+        linear-gradient(0deg, rgba(3, 5, 7, .7) 0%, rgba(3, 5, 7, 0) 22%);
+}
+
+/* ── Featured episode (right rail) ── */
+.menu-feature {
+    position: absolute; right: var(--rail); top: 50%; transform: translateY(-50%);
+    width: min(360px, 32vw); display: flex; flex-direction: column; gap: 14px; z-index: 2;
+    animation: featIn .9s cubic-bezier(.16, 1, .3, 1) .25s both;
+}
+@keyframes featIn { from { opacity: 0; transform: translate(26px, -50%); } to { opacity: 1; transform: translate(0, -50%); } }
+.mf-card {
+    position: relative; overflow: hidden; background: rgba(8, 10, 13, .72);
+    border: 1px solid rgba(255, 255, 255, .08); backdrop-filter: blur(8px);
+    transition: border-color .25s, transform .35s cubic-bezier(.16, 1, .3, 1);
+}
+.mf-card:hover { border-color: rgba(238, 138, 43, .55); transform: translateY(-2px); }
+.mf-art {
+    position: relative; height: 150px; background: var(--art, #222);
+    overflow: hidden;
+}
+/* procedural skyline silhouette + sun glow on the key art */
+.mf-art::before {
+    content: ''; position: absolute; left: 62%; top: 34%; width: 90px; height: 90px; border-radius: 50%;
+    background: radial-gradient(circle, var(--art-glow, #fff) 0%, transparent 65%); opacity: .7;
+    animation: sunDrift 14s ease-in-out infinite alternate;
+}
+.mf-art::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 62%;
+    background: linear-gradient(0deg, #080a0d 0%, #0c0d14 70%, #14141e 100%);
+    clip-path: polygon(0 55%, 6% 55%, 6% 25%, 14% 25%, 14% 45%, 22% 45%, 22% 8%, 30% 8%, 30% 38%, 38% 38%, 38% 20%, 47% 20%, 47% 50%, 55% 50%, 55% 0, 61% 0, 61% 30%, 70% 30%, 70% 42%, 78% 42%, 78% 14%, 86% 14%, 86% 48%, 94% 48%, 94% 30%, 100% 30%, 100% 100%, 0 100%);
+}
+@keyframes sunDrift { to { transform: translate(-14px, 8px) scale(1.12); } }
+.mf-art[data-biome="wildlands"]::after, .mf-art[data-biome="frostland"]::after {
+    clip-path: polygon(0 60%, 10% 30%, 18% 52%, 28% 18%, 40% 48%, 52% 22%, 64% 54%, 76% 26%, 88% 50%, 100% 34%, 100% 100%, 0 100%);
+}
+.mf-badge {
+    position: absolute; left: 14px; top: 14px; z-index: 1; font: 600 10px var(--font-mono); letter-spacing: .26em;
+    padding: 4px 9px 3px; color: #120a02; background: var(--accent);
+    box-shadow: 0 0 0 0 var(--accent-glow); animation: badgePulse 2.4s ease-out infinite;
+}
+@keyframes badgePulse { 0% { box-shadow: 0 0 0 0 rgba(238, 138, 43, .55); } 70%, 100% { box-shadow: 0 0 0 10px rgba(238, 138, 43, 0); } }
+.mf-body { padding: 14px 18px 18px; }
+.mf-eyebrow { font: 10px var(--font-mono); letter-spacing: .22em; color: var(--accent); }
+.mf-title { margin-top: 6px; font: 600 26px var(--font-display); letter-spacing: .06em; color: #f4f5f6; text-transform: uppercase; }
+.mf-text {
+    margin: 8px 0 14px; font: 13px/1.55 var(--font-ui); color: rgba(213, 217, 221, .78);
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.mf-play {
+    width: 100%; display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 14px; border: 0; cursor: pointer; background: var(--accent); color: #140b02;
+    font: 600 13px var(--font-display); letter-spacing: .2em; transition: background .2s, box-shadow .2s, padding .2s;
+}
+.mf-play span { transition: transform .25s cubic-bezier(.16, 1, .3, 1); }
+.mf-play:hover, .mf-play:focus-visible { background: #ff9b3d; box-shadow: 0 8px 26px var(--accent-glow); }
+.mf-play:hover span { transform: translateX(5px); }
+
+.mf-next { padding: 12px 16px; border-left: 2px solid rgba(255, 255, 255, .25); background: rgba(8, 10, 13, .55); }
+.mfn-label { font: 600 9px var(--font-mono); letter-spacing: .3em; color: rgba(213, 217, 221, .55); }
+.mfn-title { margin-top: 4px; font: 500 14px var(--font-display); letter-spacing: .14em; color: #e4e6e7; }
+.mfn-count { margin-top: 6px; font: 11px var(--font-mono); letter-spacing: .2em; color: rgba(213, 217, 221, .6); }
+.mfn-count b { font: 600 20px var(--font-display); color: #fff; letter-spacing: .04em; margin-right: 2px; }
+
+.mf-progress { padding: 0 2px; }
+.mfp-row { display: flex; justify-content: space-between; font: 9px var(--font-mono); letter-spacing: .28em; color: rgba(213, 217, 221, .55); }
+.mfp-row b { color: #e4e6e7; font-weight: 500; }
+.mfp-track { display: flex; gap: 3px; margin-top: 7px; }
+.mfp-track i { flex: 1; height: 3px; background: rgba(255, 255, 255, .22); }
+.mfp-track i.done { background: var(--accent); }
+.mfp-track i.latest:not(.done) { background: rgba(238, 138, 43, .4); animation: radioBlink 1.6s steps(2) infinite; }
+.mfp-track i.future { background: repeating-linear-gradient(90deg, rgba(255, 255, 255, .14) 0 3px, transparent 3px 6px); }
+
+#main-menu .menu-footer { display: flex; justify-content: space-between; align-items: center; }
+.footer-build { font: 10px var(--font-mono); letter-spacing: .24em; color: rgba(213, 217, 221, .35); }
+
+/* ── Campaign list ── */
+.panel-sub { font: 10px var(--font-mono); letter-spacing: .24em; color: var(--accent); margin-top: -6px; }
+.mission-row { grid-template-columns: 92px minmax(0, 1fr) auto; }
+.mr-code { display: flex; align-items: center; gap: 12px; }
+.mr-art {
+    flex: none; width: 34px; height: 44px; background: var(--art, #333);
+    clip-path: polygon(0 0, 100% 0, 100% 80%, 75% 100%, 0 100%);
+    opacity: .8; transition: opacity .2s, transform .3s cubic-bezier(.16, 1, .3, 1);
+}
+.mission-row.selected .mr-art, .mission-row:hover:not(.locked) .mr-art { opacity: 1; transform: scale(1.06); }
+.mission-row.upcoming .mr-art { background: repeating-linear-gradient(135deg, #24272b 0 4px, #191b1e 4px 8px); }
+.mission-row.upcoming { opacity: .55; }
+.mission-row.upcoming .mr-info p { font-style: italic; letter-spacing: .04em; text-transform: none; font-family: var(--font-ui); }
+.mr-new {
+    display: inline-block; margin-left: 10px; padding: 2px 6px 1px; vertical-align: 3px;
+    font: 600 9px var(--font-mono); letter-spacing: .2em; color: #140b02; background: var(--accent);
+}
+.mission-row.fresh .mr-status { color: var(--accent); }
+
+/* ── Briefing recap ── */
+.briefing-recap {
+    margin: 0 0 22px; padding: 12px 16px; max-width: 560px;
+    border-left: 2px solid rgba(255, 255, 255, .25); background: linear-gradient(90deg, rgba(255, 255, 255, .05), transparent);
+}
+.br-label { font: 600 9px var(--font-mono); letter-spacing: .3em; color: rgba(213, 217, 221, .55); margin-bottom: 6px; }
+.briefing-recap p { font: italic 14px/1.6 var(--font-ui); color: rgba(213, 217, 221, .85); }
+
+@media (max-width: 980px) {
+    .menu-feature { display: none; }
+}
+@media (max-height: 640px) {
+    .mf-art { height: 100px; }
+    .mf-text { -webkit-line-clamp: 2; }
+    #main-menu .title-block { margin-bottom: 2vh; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .menu-feature, .title-season, .title-sub, #main-menu .title-main, .mf-badge, .mf-art::before { animation: none !important; }
+}
+
+/* Menu-only darkening must not sit over gameplay */
+body.in-game #menu-vignette { display: none; }
+
+/* HUD legibility over bright scenes */
+#hud .hud-top-left, #hud .hud-top-right, #hud .hud-bottom-left, #hud .hud-bottom-right, #squad-status { text-shadow: 0 1px 2px rgba(0, 0, 0, .9), 0 0 12px rgba(0, 0, 0, .55); }
+#hud .hud-top-left::before { content: ""; position: absolute; left: -40px; top: -30px; width: 440px; height: 150px; z-index: -1; pointer-events: none;
+    background: radial-gradient(ellipse at 20% 40%, rgba(3, 5, 7, .45), transparent 70%); }

@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from '/node_modules/three/build/three.module.js';
 import { SceneManager } from './SceneManager.js';
 import { Renderer } from './Renderer.js';
 import { detectGPUTier } from './Renderer.js';
@@ -10,6 +10,7 @@ import { SquadManager } from '../squad/SquadManager.js';
 import { MissionManager } from '../missions/MissionManager.js';
 import { HUDManager } from '../ui/HUDManager.js';
 import { MainMenu } from '../ui/MainMenu.js';
+import { UINav } from '../ui/UINav.js';
 import { MenuScene } from '../ui/MenuScene.js';
 import { SettingsMenu } from '../ui/SettingsMenu.js';
 import { PauseMenu } from '../ui/PauseMenu.js';
@@ -25,6 +26,18 @@ import { loadWeaponModels } from '../weapons/WeaponModels.js';
 import { loadPropModels } from '../environments/PropModels.js';
 import { BIOMES } from '../environments/biomes.js';
 import { CinematicCamera } from './CinematicCamera.js';
+import { DialogueSystem } from '../story/DialogueSystem.js';
+import { getScript, SEASON, UPCOMING, formatRelease } from '../story/Story.js';
+
+/** Opening location stamp typed under each episode title. */
+const LOCATIONS = {
+    1: 'NORTHERN WILDLANDS  —  05:42 LOCAL',
+    2: 'DUSTLAND SUPPLY ROUTE  —  13:15 LOCAL',
+    3: 'FROSTLAND RESEARCH SITE  —  21:08 LOCAL',
+    4: 'DEADZONE, SECTOR 9  —  16:30 LOCAL',
+    5: 'COMMUNICATIONS HQ  —  23:31 LOCAL',
+    6: 'VEYRA CITY, MARKET DISTRICT  —  18:47 LOCAL'
+};
 
 /**
  * Top-level game orchestrator and state machine (GDD 11.4). States:
@@ -74,9 +87,12 @@ export class Game {
         // Menu backdrop
         this.menuScene = new MenuScene(this.menuThreeScene);
         this.renderer.setScene(this.menuThreeScene, this.menuCamera);
+        this.renderer.setExposure(this.menuScene.exposure);
 
         // UI controllers
+        this.uiNav = new UINav();
         this.cinematic = new CinematicCamera();
+        this.dialogue = new DialogueSystem({ audio: this.audio });
         this.hud = new HUDManager();
         this.settingsMenu = new SettingsMenu({ audio: this.audio });
         this.mainMenu = new MainMenu({
@@ -87,7 +103,7 @@ export class Game {
         this.pauseMenu = new PauseMenu({
             audio: this.audio,
             onResume: () => this.resume(),
-            onSettings: () => { this.mainMenu.show('settings'); this.state = STATE.PAUSED; },
+            onSettings: () => { this.mainMenu.returnTo = 'pause'; this.mainMenu.show('settings'); this.state = STATE.PAUSED; },
             onRestart: () => this.restartCheckpoint(),
             onAbort: () => this.abortToMenu()
         });
@@ -101,7 +117,8 @@ export class Game {
             getPlayerPos: () => (this.player ? this.player.getEyePosition() : null),
             audio: this.audio,
             onComplete: (result) => this._onMissionComplete(result),
-            onFail: () => this._onMissionFailed()
+            onFail: () => this._onMissionFailed(),
+            onObjective: (index, obj, mission) => this._onStoryBeat(index, obj, mission)
         });
 
         this._bindGlobalEvents();
@@ -337,6 +354,7 @@ export class Game {
         if (fl) fl.style.width = '70%';
 
         this.renderer.setExposure(level.exposure || 1.2);
+        this.renderer.setGrade(cfg.grade);
 
         // Point the renderer at the gameplay scene
         this.renderer.setScene(this.sceneManager.getScene(), this.cameraManager.getCamera());
@@ -354,7 +372,7 @@ export class Game {
             bounds: level.bounds,
             baseFov: saveManager.settings.fov || 75,
             getRaycastables: () => level.raycastables,
-            getEnemies: () => this.enemies,
+            getEnemies: () => (this._cineHoldFire ? [] : this.enemies),   // scripted scenes: squad holds fire
             onEnemyHit: (enemy, dmg, point, headshot) => this._onEnemyHit(enemy, dmg, point, headshot),
             getInteractables: () => this.interactables
         });
@@ -393,7 +411,7 @@ export class Game {
         // Squad
         this.squad = new SquadManager(this.sceneManager.getScene(), {
             getPlayerPos: () => this.player.getPosition(),
-            getEnemies: () => this.enemies,
+            getEnemies: () => (this._cineHoldFire ? [] : this.enemies),   // scripted scenes: squad holds fire
             getRaycastables: () => level.raycastables,
             getWorld: () => level.world,
             heightAt: level.heightAt,
@@ -405,7 +423,8 @@ export class Game {
             new THREE.Vector3(2.2, 0, 2.5),
             new THREE.Vector3(0, 0, 4)
         ];
-        spawns.squad.forEach((s, i) => {
+        this._formation = formation;
+        (mission.squad || spawns.squad).forEach((s, i) => {
             this.squad.addMember(s.name, s, formation[i % formation.length]);
         });
 
@@ -418,6 +437,7 @@ export class Game {
 
         // Audio ambience per biome
         this.audio.startAmbience(level.ambience, 0.14);
+        this.audio.startEvents(mission.biome);
         this.audio.stopMusic();
 
         // Apply live settings to fresh systems
@@ -425,6 +445,7 @@ export class Game {
 
         // HUD
         this.hud.show();
+        document.body.classList.add('in-game');
         this.hud.setIntel(saveManager.campaign.collectedIntel.length);
 
         if (fl) fl.style.width = '100%';
@@ -438,6 +459,7 @@ export class Game {
                 this._loadingEl = null;
             }
             if (this._playIntro) { this._startCinematic('intro', mission); return; }
+            this.dialogue.play(getScript(mission.id).start || []);
             this.state = STATE.PLAYING;
             this.inputManager.requestLock();
             this.resumeMusicCombat();
@@ -458,7 +480,7 @@ export class Game {
     }
 
     _surfaceForBiome(biome) {
-        return { wildlands: 'grass', dustland: 'dirt', frostland: 'snow', deadzone: 'concrete' }[biome] || 'dirt';
+        return { wildlands: 'grass', dustland: 'dirt', frostland: 'snow', deadzone: 'concrete', city: 'concrete' }[biome] || 'dirt';
     }
 
     // ── CINEMATICS ───────────────────────────────────────────────────
@@ -476,11 +498,32 @@ export class Game {
         }
         const ctx = {
             playerPos, gameCamera: this.cameraManager.getCamera(), squad: this.squad, objective,
+            playerYaw: this.player.yaw.rotation.y,
             heightAt: level && level.heightAt,
-            title: mission ? { code: mission.code, title: mission.title, region: mission.region } : null
+            raycastables: level && level.raycastables,
+            dialogue: this.dialogue,
+            audio: this.audio,
+            title: mission ? {
+                code: mission.code, title: mission.title, region: mission.region,
+                eyebrow: `SEASON ${SEASON.number}  ·  EPISODE ${mission.code}`,
+                location: LOCATIONS[mission.id]
+            } : null
         };
-        if (mode === 'intro') this.cinematic.startIntro(ctx); else this.cinematic.startFree(ctx);
+        if (mode === 'intro') {
+            this.dialogue.clear();
+            this.cinematic.startIntro(ctx);
+            // first line lands as the establishing shot settles (cinematic clock, see animate)
+            this._introLines = getScript(mission.id).intro || [];
+        } else if (mode === 'outro') {
+            this.cinematic.startOutro(ctx);
+        } else if (mode === 'beat') {
+            ctx.objective = this._beatObjective || objective;
+            this.cinematic.startBeat(ctx);
+        } else {
+            this.cinematic.startFree(ctx);
+        }
         this.state = STATE.CINEMATIC;
+        if (mode !== 'free') this.audio.startMusic('tension');
         this.hud.hide();
         this.player.weapons.setViewModelVisible(false);
         const sc = document.getElementById('scope-overlay');
@@ -490,6 +533,16 @@ export class Game {
     }
 
     _endCinematic() {
+        const mode = this.cinematic.mode;
+        this._introLines = null;
+        if (mode === 'outro') { this._finishOutro(); return; }
+        if (mode === 'intro') {
+            // a skipped intro drops its remaining lines; gameplay opens with the start beat
+            this.dialogue.clear();
+            this.dialogue.play(getScript(this.pendingMission.id).start || []);
+        }
+        if (mode === 'beat' && this.dialogue.busy) this.dialogue.clear();   // skipped: drop the rest of the scene
+        this._cineHoldFire = false;
         this.cinematic.stop();
         this.renderer.setScene(this.sceneManager.getScene(), this.cameraManager.getCamera());
         this.cameraManager.resize();
@@ -553,6 +606,9 @@ export class Game {
         clearTimeout(this._missionReadyTimer);
         this._missionReadyTimer = null;
         this.suppression = 0;
+        this._cineHoldFire = false;
+        this._introLines = null;
+        if (this.dialogue) { this.dialogue.clear(); this.dialogue.setVisible(true); this.dialogue.setMode('hud'); }
         if (this.renderer) this.renderer.setSuppression(0);
         if (this.cinematic && this.cinematic.active) {
             this.cinematic.stop();
@@ -567,10 +623,54 @@ export class Game {
         this.squad = null;
     }
 
+    /** Objective reached: play its story lines and apply squad changes (e.g. Hayes joining). */
+    _onStoryBeat(index, obj, mission) {
+        const script = getScript(mission.id);
+        const isLast = index >= this.missionManager.objectives.length - 1;
+        const lines = (!isLast && script.objectives && script.objectives[index]) || [];
+        this.dialogue.play(lines);
+        const join = mission.joins && mission.joins[index];
+        if (join && this.squad && !this.squad.getMember(join.name)) {
+            const n = this.squad.members.length;
+            this.squad.addMember(join.name, { x: obj.position.x + 1.5, z: obj.position.z + 1.5 }, this._formation[n % this._formation.length]);
+            this._lastSquadSig = null;
+        }
+        // story beats flagged in the script cut into a short in-mission cinematic
+        if (lines.length && (script.cinematicBeats || []).includes(index) && this.state === STATE.PLAYING) {
+            this._beatObjective = obj.position.clone();
+            this.inputManager.exitLock();
+            this._startCinematic('beat', mission);
+        }
+    }
+
+    /** Last objective done: roll the closing cinematic with the outro lines, then the debrief. */
     _onMissionComplete(result) {
+        const mission = this.pendingMission;
+        const script = getScript(mission.id);
+        result.episode = mission.episode || mission.id;
+        if (!result.nextMission && UPCOMING[0]) {
+            const u = UPCOMING[0];
+            result.teaser = { code: u.code, title: u.title, blurb: u.blurb, when: formatRelease(u.release) };
+        }
+        saveManager.completeMission(result.missionId, { time: result.time, kills: result.kills, accuracy: result.accuracy });
+        this._pendingResult = result;
+                this.inputManager.exitLock();
+        this.dialogue.clear();
+        const lines = [...((script.objectives && script.objectives[this.missionManager.objectives.length - 1]) || []), ...(script.outro || [])];
+        this.dialogue.play(lines);
+        this._startCinematic('outro', mission);
+    }
+
+    _finishOutro() {
+        this.cinematic.stop();
+        this.dialogue.clear();
+        this.renderer.setScene(this.sceneManager.getScene(), this.cameraManager.getCamera());
+        this._showMissionComplete(this._pendingResult);
+    }
+
+    _showMissionComplete(result) {
         this.state = STATE.COMPLETE;
         this.inputManager.exitLock();
-        saveManager.completeMission(result.missionId, { time: result.time, kills: result.kills, accuracy: result.accuracy });
         this.missionComplete.show(result);
         this.hud.hide();
         this.audio.stopAmbience();
@@ -620,6 +720,7 @@ export class Game {
         if (this.state !== STATE.PLAYING) return;
         this.state = STATE.PAUSED;
         this.inputManager.exitLock();
+        this.dialogue.setVisible(false);
         const stats = this.missionManager.stats;
         const acc = stats.shotsFired > 0 ? Math.round((stats.shotsHit / stats.shotsFired) * 100) : 0;
         this.pauseMenu.show(
@@ -633,8 +734,10 @@ export class Game {
         if (this.state !== STATE.PAUSED) return;
         this.mainMenu.hideAll();
         this.pauseMenu.hide();
+        this.dialogue.setVisible(true);
         this.state = STATE.PLAYING;
         this.inputManager.requestLock();
+        this.inputManager.endFrame();   // latch the Esc that resumed so it doesn't re-trigger pause next frame
         this.resumeMusicCombat();
     }
 
@@ -657,10 +760,12 @@ export class Game {
         this.mainMenu.refresh();
         this.mainMenu.show('menu');
         this.renderer.setScene(this.menuThreeScene, this.menuCamera);
-        this.renderer.setExposure(1.05);
+        this.renderer.setExposure(this.menuScene.exposure);
+        this.renderer.setGrade();
         this.audio.stopAmbience();
         this.audio.startAmbience('rain', 0.12);
         this.audio.startMusic('menu');
+        document.body.classList.remove('in-game');
         this.state = STATE.MENU;
     }
 
@@ -679,25 +784,36 @@ export class Game {
 
         if (this.state === STATE.MENU || this.state === STATE.BRIEFING) {
             this.menuScene.update(dt, this.menuCamera);
+            this.dialogue.update(dt);
             this.renderer.render();
             this.inputManager.endFrame();
             return;
         }
 
         if (this.state === STATE.CINEMATIC) {
-            const intro = this.cinematic.mode === 'intro';
+            const free = this.cinematic.mode === 'free';
+            this._cineHoldFire = !free;
             const input = this.inputManager;
-            const skip = intro
-                ? (input.justPressed('jump') || input.justPressed('pause') || input.justPressedMouse('left') || input.keys.Enter)
-                : (input.justPressed('cinematic') || input.justPressed('pause'));
-            const hurt = this.player.health.currentHealth + this.player.health.currentArmor < this._cineHealth;
+            let skip;
+            if (free) skip = input.justPressed('cinematic') || input.justPressed('pause');
+            else {
+                const pad = navigator.getGamepads ? [...navigator.getGamepads()].some(g => g && g.buttons[0] && g.buttons[0].pressed) : false;
+                const held = input.isDown('jump') || input.keys.Enter || input.isMouseDown('left') || pad;
+                skip = this.cinematic.feedSkip(held, dt);
+            }
+            const hurt = free && this.player.health.currentHealth + this.player.health.currentArmor < this._cineHealth;
             const playerPos = this.player.getPosition();
-            // intro freezes enemies; the free view keeps the world live but bails out on damage
-            if (!intro) this.enemies.forEach(e => e.update(dt));
+            // scripted cinematics freeze the fight; the free view keeps the world live but bails out on damage
+            if (free) this.enemies.forEach(e => e.update(dt));
             this.squad.update(dt, playerPos);
-            this.missionManager.update(dt, this.player.getEyePosition());
+            if (free) this.missionManager.update(dt, this.player.getEyePosition());
             this.sceneManager.update(dt, playerPos, this.cinematic.camera);
             this.hud.update(dt);
+            if (this._introLines && this.cinematic.mode === 'intro' && this.cinematic.time > 1.8) {
+                this.dialogue.play(this._introLines);
+                this._introLines = null;
+            }
+            this.dialogue.update(dt);
             const running = this.cinematic.update(dt);
             if (!running || skip || hurt) this._endCinematic();
             this.renderer.render();
@@ -720,10 +836,12 @@ export class Game {
             this.enemies.forEach(e => e.update(dt));
             this.squad.update(dt, playerPos);
             this.missionManager.update(dt, this.player.getEyePosition());
+            if (this.state !== STATE.PLAYING) { this.inputManager.endFrame(); return; }   // mission just completed → outro owns the frame
             this.sceneManager.update(dt, playerPos, this.cameraManager.getCamera());
 
             // HUD extras
             this.hud.update(dt);
+            this.dialogue.update(dt);
             this.hud.updateCompass(this.player.yaw.rotation.y);
             this._updateCrosshair();
             this._updateSquadStatus();

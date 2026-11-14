@@ -1,7 +1,7 @@
 export function environmentPolicy(detail = {}) {
     const extent = detail.shadowExtent ?? 55;
     const scale = Math.max(0.7, Math.min(1.5, extent / 60));
-    const renderDistance = Math.min(detail.renderDistance ?? 100 * scale, 120);
+    const renderDistance = Math.min(detail.renderDistance ?? 100 * scale, detail.maxRenderDistance ?? 120);
     const trees = detail.treeLod ?? [38, 80, 150];
     const grassDistance = detail.foliageDistance ?? Math.min(detail.grassDist ?? 70, 62 * scale);
     return {

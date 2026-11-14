@@ -42,14 +42,54 @@
 | explosion_0.mp3 | Distant Explosion | danlucaz | https://freesound.org/s/517747/ |
 | explosion_1.mp3 | Distant Explosion | Mr_KeybOred | https://freesound.org/s/372086/ |
 | grunt_0.mp3 | Mask Grunt Sound | Hoggington | https://freesound.org/s/536372/ |
+| ui_hover_0.mp3 | Soft UI Button Click | Jummit | https://freesound.org/s/528561/ |
+| ui_select_0.mp3 | UI Click Crisp | Qvantor | https://freesound.org/s/878236/ |
+| whoosh_0.mp3 | Sound Design Elements Whoosh SFX 028 | AudioPapkin | https://freesound.org/s/812663/ |
+| whoosh_1.mp3 | Sound Design Elements Whoosh SFX 026 | AudioPapkin | https://freesound.org/s/812661/ |
+| boom_0.mp3 | DSGNStngr_basic trailer boom impact | harrisonlace | https://freesound.org/s/816376/ |
+| sting_0.mp3 | Spooky Sting | nomiqbomi | https://freesound.org/s/578370/ |
+| siren_0.mp3 | multiple siren | Kostrava | https://freesound.org/s/324276/ |
+| radio_on_0.mp3 | Radio Sign Off / Squelch | JovianSounds | https://freesound.org/s/524205/ |
+| radio_on_1.mp3 | End radio transmission | ReadeOnly | https://freesound.org/s/47646/ |
+| radio_off_0.mp3 | Walkie Talkie - Roger Beep | bruce965 | https://freesound.org/s/321906/ |
+| radio_off_1.mp3 | Walkie Talkie beep | chungus43A | https://freesound.org/s/610398/ |
+| radio_static_0.mp3 | Radio static.aif | carroll27 | https://freesound.org/s/151902/ |
+| ui_back_0.mp3 | SFX UI Button Click | suntemple | https://freesound.org/s/253168/ |
+| amb_city_0.mp3 | War Drone/Ambience | Bowesy | https://freesound.org/s/691481/ |
+| whiz_1.mp3 | Fly-by whiz SFX (subsonic) | modusmogulus | https://freesound.org/s/789222/ |
+| whiz_0.mp3 | Whizzby | Daleonfire | https://freesound.org/s/505238/ |
+| impact_concrete_0.mp3 | Bullet impact ground (subsonic) SFX | modusmogulus | https://freesound.org/s/789388/ |
+| step_concrete_1.mp3 | concrete footstep 1 | Yoyodaman234 | https://freesound.org/s/166509/ |
+| step_concrete_2.mp3 | Cloth_And_Shoes_On_Concrete_22 | BlondPanda | https://freesound.org/s/778502/ |
+| music_tension_0.mp3 | Wide Cinematic Ambiet for Tension Effect | The-Sacha-Rush | https://freesound.org/s/493741/ |
+| impact_flesh_0.mp3 | Headshot sound | MadPanCake | https://freesound.org/s/660769/ |
+| step_snow_1.mp3 | Footstep in the snow_04 [RAW] | cabled_mess | https://freesound.org/s/384424/ |
+| music_menu_0.mp3 | The slow music of our breakup | xkeril | https://freesound.org/s/686660/ |
+| thunder_0.mp3 | distant thunder with brake in middel.mp3 | soundman9826 | https://freesound.org/s/193334/ |
+| thunder_1.mp3 | THunder_recorded_2021_Summer_02.wav | benmerrill328 | https://freesound.org/s/613276/ |
+| thunder_2.mp3 | thunder growling | bastipictures | https://freesound.org/s/243780/ |
+| thunder_3.mp3 | thunder 2 | elmoustachio | https://freesound.org/s/476736/ |
+| bird_0.mp3 | forest-bird (2).WAV | sama66 | https://freesound.org/s/462136/ |
+| bird_1.mp3 | singing_bird_forest_210410_0060.wav | titi2 | https://freesound.org/s/567530/ |
+| crow_0.mp3 | Hooded Crow: Cawing | Mish7913 | https://freesound.org/s/741366/ |
+| crow_1.mp3 | Caw.ogg | egomassive | https://freesound.org/s/536732/ |
+| wind_gust_0.mp3 | wind 8 | ZIP.Creates | https://freesound.org/s/726319/ |
+| creak_0.mp3 | Old_Truck_Metal_Squeaks-Creaks-Rattle-Impact_Squeaky_Door_Hinge.wav | dilsun | https://freesound.org/s/508281/ |
+| creak_1.mp3 | METLImpt_Metal Impact Creak Resonant_SDFY_Metal Resonant.wav | SoundDesignForYou | https://freesound.org/s/697748/ |
+| distant_blast_0.mp3 | distant explosion | Kostrava | https://freesound.org/s/324277/ |
+| distant_blast_1.mp3 | Distant Explosion | Qvantor | https://freesound.org/s/879283/ |
+| wind_gust_1.mp3 | wind_howl2_stereo.wav | swiftoid | https://freesound.org/s/117611/ |
+| ir_city_0.mp3 | IR_Residential Area.5-Storey Residential Buildings 2_EM | newlocknew | https://freesound.org/s/816877/ |
 
 ## 3D models, textures, HDRIs - Poly Haven, CC0 1.0
 
 Models: ammo_box, old_military_crate, wooden_military_crate, metal_jerrycan_green, Barrel_01, portable_generator, portable_searchlight, old_tyre, stone_fire_pit, tree_stump_01, dead_tree_trunk, rock_moss_set_01, fern_02, shrub_02, nettle_plant, dry_branches_medium_01, vintage_radio_transceiver, medical_box, utility_box_01 (simplified + KTX2/Draco compressed).
+City street furniture (raw 1k glTF, tools/fetch-polyhaven-models.mjs): concrete_road_barrier, concrete_road_barrier_02, covered_car, fire_hydrant, metal_trash_can, trashbag, street_lamp_01, street_lamp_02, modular_street_seating, wooden_crate_01, wooden_crate_02, plastic_crate_02, painted_wooden_bench, modular_chainlink_fence, cardboard_box_01, cement_bag, plastic_crate_01, power_box_01, utility_box_02, planter_box_01, barrel_03.
 
 Textures: forest_ground_04, leaves_forest_ground, brown_mud_leaves_01, brick_wall_003, concrete_wall_004, corrugated_iron_02, rusty_corrugated_iron, rusty_metal_02, wood_planks_grey, gravel_floor_02, sand_01, snow_02, worn_asphalt.
+Veyra City PBR sets (colour + normal + roughness, 1k JPG): red_brick_03, painted_plaster_wall, grey_plaster_02, yellow_plaster, concrete_tile_facade, rectangular_facade_tiles, precast_concrete_wall, concrete_pavers_02, concrete_floor_02, asphalt_02, concrete_floor_worn_001, metal_plate.
 
-HDRIs: kloofendal_overcast_puresky, kloofendal_43d_clear_puresky, snow_field_puresky, overcast_soil_puresky.
+HDRIs: kloofendal_overcast_puresky, kloofendal_43d_clear_puresky, snow_field_puresky, overcast_soil_puresky, kloppenheim_06_puresky (Veyra City, Episode 06).
 
 https://polyhaven.com - no attribution required, listed as thanks.
 

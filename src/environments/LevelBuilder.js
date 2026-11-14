@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import * as THREE from '/node_modules/three/build/three.module.js';
+import { mergeGeometries } from '/node_modules/three/examples/jsm/utils/BufferGeometryUtils.js';
 import { TextureFactory } from '../utils/TextureFactory.js';
 import { Sky } from './Sky.js';
 import { CollisionWorld } from '../core/CollisionWorld.js';
@@ -13,6 +13,7 @@ import { buildTerrainLOD } from './TerrainLOD.js';
 import { createTextureStream } from './TextureStream.js';
 import { assetStream } from './AssetStream.js';
 import * as Arch from './Architecture.js';
+import * as City from './CityKit.js';
 import {
     buildForest, buildBushes, buildGrass, buildRocks, buildModelScatter, registerScatterModel,
     getFoliageAssets, updateWindTime
@@ -55,7 +56,8 @@ export class LevelBuilder {
             fieldArea: detail.fieldArea ?? 44,
             renderer: detail.renderer || null
         };
-        Object.assign(this.detail, environmentPolicy({ ...detail, ...this.detail }));
+        Object.assign(this.detail, environmentPolicy({ ...detail, ...this.detail, ...(config.view || {}) }));
+        if (config.view && config.view.shadowExtent) this.detail.shadowExtent = config.view.shadowExtent;   // wide streets need longer shadows
         this.bounds = config.bounds || 90;
         this.group = new THREE.Group();
         this.raycastables = [];
@@ -535,8 +537,9 @@ export class LevelBuilder {
             baseNrm.needsUpdate = true;
         } else if (!baseNrm) baseNrm = TextureFactory[config.groundTexture || 'ground'](1024, 1).normalMap;
         const gravel = (PH && PH.tex.gravel_floor_02 && PH.tex.gravel_floor_02.map) || proc();
-        const mud = (PH && PH.tex.brown_mud_leaves_01 && PH.tex.brown_mud_leaves_01.map) || proc();
-        const litter = (PH && PH.tex.leaves_forest_ground && PH.tex.leaves_forest_ground.map) || proc();
+        // urban maps swap the forest mud/leaf-litter layers for real concrete/asphalt scans (config.groundMud / groundLitter)
+        const mud = (PH && PH.tex[config.groundMud || 'brown_mud_leaves_01'] && PH.tex[config.groundMud || 'brown_mud_leaves_01'].map) || proc();
+        const litter = (PH && PH.tex[config.groundLitter || 'leaves_forest_ground'] && PH.tex[config.groundLitter || 'leaves_forest_ground'].map) || proc();
         const grass = forest ? assets.textures.grass : proc();
         [baseMap, gravel, mud, litter, grass].forEach(t => { if (t) t.anisotropy = aniso; });
         const nm = baseNrm.clone();
@@ -763,6 +766,8 @@ export class LevelBuilder {
         this._glass = new THREE.MeshStandardMaterial({ color: 0x0f151b, roughness: 0.12, metalness: 0.85, envMapIntensity: 1.4 });
         this.disposables.push(this._glass);
         for (const item of config.layout || []) this._buildStructure(item, concrete, roofTex, config);
+        if (config.streets) City.streets(this, this.deco, config.streets, config.layout || []);
+        if (config.skyline) City.skyline(this, this.deco, config.skyline);
     }
 
     _buildStructure(item, concrete, roofTex, config) {
@@ -772,7 +777,7 @@ export class LevelBuilder {
         group.rotation.y = rot;
 
         const baseColor = new THREE.Color(color ?? config.structureColor ?? 0x8a8a82);
-        const brick = this._photo('brick_wall_003', () => TextureFactory.brick(512, 1));
+        const brick = this._photo(config.buildingPhoto || 'brick_wall_003', () => TextureFactory.brick(512, 1));
         const wt = type === 'building' ? 2 : 3;   // metres per texture tile
         const wallMat = type === 'building'
             ? this._pbr(brick, { color: new THREE.Color(color ?? config.brickColor ?? 0xd2b4a2), roughness: 0.9 })
@@ -829,6 +834,9 @@ export class LevelBuilder {
             this.cover.push(new THREE.Vector3(x, 0, z - d));
         } else if (type === 'tower') {
             Arch.tower(this, this.deco, item, baseColor);
+        } else if (type === 'block') {
+            City.block(this, this.deco, item);
+            return;
         }
         this.group.add(group);
     }
@@ -924,7 +932,8 @@ export class LevelBuilder {
             g.position.set(v.x, 0, v.z);
             g.rotation.y = v.rot || 0;
             const col = new THREE.Color(v.color || 0x5a6244);
-            const body = this._pbr(camo, { color: col.clone().multiplyScalar(1.5), roughness: 0.78, metalness: 0.25 });
+            // real CC0 painted-steel scan (tinted to the vehicle colour), not the procedural camo
+            const body = this._pbr(this._photo('rusty_metal_02', () => camo), { color: col.clone().multiplyScalar(1.9), roughness: 0.72, metalness: 0.3 });
             const add = (mesh, collide = true) => { this._shadow(mesh); g.add(mesh); if (collide) this.raycastables.push(mesh); return mesh; };
 
             // chassis, hood, cabin, windshield, bed + tarp ribs
@@ -952,7 +961,7 @@ export class LevelBuilder {
                 g.rotation.z = (this.rand() - 0.5) * 0.16;
                 g.rotation.x = (this.rand() - 0.5) * 0.08;
                 g.position.y = -0.12;
-                body.color.multiplyScalar(0.55);       // burnt / sooty
+                body.color.multiplyScalar(0.8);        // sooty
                 body.roughness = 0.95;
             }
             g.updateMatrixWorld(true);

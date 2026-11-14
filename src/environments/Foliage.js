@@ -1,8 +1,8 @@
-import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
+import * as THREE from '/node_modules/three/build/three.module.js';
+import { GLTFLoader } from '/node_modules/three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from '/node_modules/three/examples/jsm/loaders/DRACOLoader.js';
 import { makeGLTFLoader, loadKTX2 } from './AssetLoaders.js';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { mergeGeometries } from '/node_modules/three/examples/jsm/utils/BufferGeometryUtils.js';
 import { bakeImpostor } from './Impostors.js';
 import { relocatePathFoliage } from './PathFoliage.js';
 
@@ -468,6 +468,67 @@ export function buildForest(ctx, v) {
             inst.dispose(); geoms.forEach(g => g.dispose()); impostors.forEach(i => i.dispose());
             new Set(variants.flatMap(l => l.slice(0, lodCount).flatMap(parts => parts.map(p => p.material)))).forEach(m => m.dispose());
         }
+    };
+}
+
+/**
+ * Static-camera EZ-Tree forest for the menu backdrop. spots: [{ x, z, h }] with
+ * h in metres. LOD is chosen once from the distance to `eye`; every
+ * variant/LOD pair is one InstancedMesh per part, swaying in the shared wind.
+ */
+export async function buildMenuForest(parent, spots, { eye = new THREE.Vector3(), tint = null, variants = 3, lodDist = [30, 75] } = {}) {
+    if (!EZ) {
+        try { EZ = await import('@dgreenheck/ez-tree'); } catch (e) { console.warn('EZ-Tree failed to load:', e); return null; }
+    }
+    const cfg = SPECIES.pine;
+    const lodOf = (s) => { const d = Math.hypot(s.x - eye.x, s.z - eye.z); return d < lodDist[0] ? 0 : d < lodDist[1] ? 1 : 2; };
+    const buckets = new Map();
+    spots.forEach((s, i) => {
+        const key = `${i % variants}:${lodOf(s)}`;
+        if (!buckets.has(key)) buckets.set(key, []);
+        buckets.get(key).push(s);
+    });
+    const mats = [], geoms = [], meshes = [];
+    const variantMats = [], heights = [];
+    const d = new THREE.Object3D(), col = new THREE.Color();
+    for (const [key, list] of buckets) {
+        const [vi, lod] = key.split(':').map(Number);
+        const tree = generateTree(cfg.presets[vi % cfg.presets.length], 211 + vi * 53, lod, cfg, tint);
+        if (!variantMats[vi]) {
+            const m = makeTreeMaterials(tree, cfg, tint);
+            addWind(m.bark, { amp: 0.9, invH: 1 / 45, power: 2 });
+            addWind(m.leaf, { amp: 1.4, invH: 1 / 45, power: 1.6 });
+            variantMats[vi] = m; mats.push(m.bark, m.leaf);
+            const bb = new THREE.Box3();
+            tree.branchesMesh.geometry.computeBoundingBox(); tree.leavesMesh.geometry.computeBoundingBox();
+            bb.union(tree.branchesMesh.geometry.boundingBox).union(tree.leavesMesh.geometry.boundingBox);
+            heights[vi] = Math.max(bb.max.y, 1);
+        }
+        const m = variantMats[vi];
+        [[tree.branchesMesh.geometry, m.bark], [tree.leavesMesh.geometry, m.leaf]].forEach(([geo, mat]) => {
+            const im = new THREE.InstancedMesh(geo, mat, list.length);
+            list.forEach((s, i) => {
+                const k = s.h / heights[vi];
+                const r = Math.sin(s.x * 12.9 + s.z * 78.2) * 43758.5453;
+                const rf = r - Math.floor(r);
+                d.position.set(s.x, -0.15, s.z);
+                d.rotation.set(0, rf * Math.PI * 2, 0);
+                d.scale.set(k * (0.92 + rf * 0.16), k, k * (1.08 - rf * 0.16));
+                d.updateMatrix();
+                im.setMatrixAt(i, d.matrix);
+                const t = 0.82 + rf * 0.3;
+                im.setColorAt(i, col.setRGB(t * 0.97, t, t * 0.95));
+            });
+            im.instanceMatrix.needsUpdate = true;
+            if (im.instanceColor) im.instanceColor.needsUpdate = true;
+            im.frustumCulled = false;
+            parent.add(im);
+            meshes.push(im); geoms.push(geo);
+        });
+    }
+    return {
+        meshes,
+        dispose() { meshes.forEach(m => { m.parent && m.parent.remove(m); m.dispose(); }); geoms.forEach(g => g.dispose()); mats.forEach(m => m.dispose()); }
     };
 }
 

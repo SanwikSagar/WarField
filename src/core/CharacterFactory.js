@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import { clone as skeletonClone } from 'three/examples/jsm/utils/SkeletonUtils.js';
+import * as THREE from '/node_modules/three/build/three.module.js';
+import { clone as skeletonClone } from '/node_modules/three/examples/jsm/utils/SkeletonUtils.js';
 import { makeGLTFLoader } from '../environments/AssetLoaders.js';
 import { createWeaponModel, hasWeaponModel } from '../weapons/WeaponModels.js';
 
@@ -23,16 +23,20 @@ const T = {};      // templates by name
 const FLIP_FORWARD = { army1: true };
 const PART_NAMES = ['hips', 'spine', 'chest', 'neck', 'head', 'uL', 'lL', 'fL', 'uR', 'lR', 'fR', 'aL', 'fAL', 'hL', 'aR', 'fAR', 'hR'];
 
-export async function loadCharacters() {
-    if (T.ready) return;
-    const loader = makeGLTFLoader();
-    for (const name of ['soldier', 'army1', 'army2']) {
-        try {
-            const gl = await loader.loadAsync(`/assets/models/characters/${name}.glb`);
-            T[name] = name === 'soldier' ? prepSkinned(gl.scene) : prepStatic(gl.scene, name);
-        } catch (e) { console.warn('Character failed to load:', name, e); }
-    }
-    T.ready = true;
+let charactersLoading = null;
+export function loadCharacters() {
+    if (charactersLoading) return charactersLoading;
+    charactersLoading = (async () => {
+        const loader = makeGLTFLoader();
+        for (const name of ['soldier', 'army1', 'army2']) {
+            try {
+                const gl = await loader.loadAsync(`/assets/models/characters/${name}.glb`);
+                T[name] = name === 'soldier' ? prepSkinned(gl.scene) : prepStatic(gl.scene, name);
+            } catch (e) { console.warn('Character failed to load:', name, e); }
+        }
+        T.ready = true;
+    })();
+    return charactersLoading;
 }
 export function hasCharacters() { return !!(T.soldier || T.army1 || T.army2); }
 
@@ -468,18 +472,19 @@ class Animator {
 
         // ── hips / spine / head
         const lean = 0.05 + A * 0.08 + aim * 0.1 + this.crouch * 0.25 + this.flinch * 0.25 - this.kick * 0.06;
-        this.rot('hips', 0.0, -sw * 0.1 * A, sway * 0.25 * (1 - A));
+        this.rot('hips', 0.0, -sw * 0.1 * A, sway * 0.25 * (1 - A) + sw * 0.04 * A * live);   // pelvis drops on the swing side
         this.rot('spine', lean * 0.5 + breath, sw * 0.12 * A * (1 - aim * 0.7) + aim * -0.25 + gaze * 0.12, -sway * 0.3 * (1 - A));
         this.rot('chest', lean * 0.5 + breath * 1.4 + syl * 0.015 * tk, sw * 0.1 * A * (1 - aim * 0.7) + aim * -0.12 + gaze * 0.15 + Math.sin(t * 1.7) * 0.05 * tk, 0);
         const idleLook = look * (1 - aim) * (1 - A) * (1 - tk);
         this.rot('neck', -lean * 0.3 + nod * 0.4, -sw * 0.05 * A + idleLook * 0.2 + aim * 0.15 + gaze * 0.3, tilt * 0.4);
-        this.rot('head', -lean * 0.25 + aim * 0.05 + nod, look * 0.45 * (1 - aim) * (1 - A * 0.7) * (1 - tk) + aim * 0.2 + gaze * 0.45, tilt);
+        this.rot('head', -lean * 0.25 + aim * 0.05 + nod - bob * 1.5, look * 0.45 * (1 - aim) * (1 - A * 0.7) * (1 - tk) + aim * 0.2 + gaze * 0.45 + sw * 0.07 * A * (1 - aim), tilt - sw * 0.03 * A);   // head counter-rotates against the torso so the gaze stays steady
         const hb = this.rig.bones.hips;
         if (hb) {
             const sc = 1 / this.posScale;
             const shift = Math.sin(t * 0.55) * 0.025 * (1 - A) * live;     // idle weight shift between feet
             const limpDip = (this.limp || 0) * Math.max(0, Math.sin(ph + Math.PI)) * 0.045 * A;
-            hb.position.set(this.hipsRest.x + shift * sc, this.hipsRest.y + (bob * 1 - this.crouch * 0.35 - limpDip) * sc, this.hipsRest.z);
+            const weight = Math.sin(ph) * 0.016 * A * live;   // centre of mass shifts over the stance leg
+            hb.position.set(this.hipsRest.x + (shift + weight) * sc, this.hipsRest.y + (bob * 1 - this.crouch * 0.35 - limpDip) * sc, this.hipsRest.z);
         }
 
         // ── legs: swing along the travel direction (strafe / backpedal), knee flex, crouch folds them

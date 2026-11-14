@@ -35,8 +35,13 @@ export class HUDManager {
             squadStatus: document.getElementById('squad-status'),
             damageDirection: document.getElementById('damage-direction'),
             compassStrip: document.getElementById('compass-strip'),
-            intelCount: document.getElementById('intel-count')
+            intelCount: document.getElementById('intel-count'),
+            ammoHint: document.getElementById('ammo-hint'),
+            compassHeading: document.getElementById('compass-heading'),
+            objectiveTracker: document.getElementById('objective-tracker'),
+            healthBlock: document.querySelector('.health-block')
         };
+        this.lastHealth = null;
         this.subtitleTimer = 0;
         this.damageDirs = [];
         this._buildCompass();
@@ -56,7 +61,7 @@ export class HUDManager {
         globalEvents.on('hitmarker', (d) => this._onHitmarker(d));
         globalEvents.on('reload_progress', (d) => this._onReload(d));
         globalEvents.on('reload_end', () => { this.el.reloadIndicator.classList.remove('active'); });
-        globalEvents.on('dialogue', (d) => this._onDialogue(d));
+        // dialogue is rendered by story/DialogueSystem
         globalEvents.on('interaction_update', (d) => this._onInteraction(d));
         globalEvents.on('player_hit_direction', (d) => this._onDamageDirection(d));
         globalEvents.on('squad_update', (d) => this._onSquad(d));
@@ -74,10 +79,23 @@ export class HUDManager {
         this.el.ammoCurrent.textContent = d.current;
         this.el.ammoReserve.textContent = d.reserve;
         this.el.ammoCurrent.classList.toggle('low', d.current <= Math.ceil(d.magSize * 0.2));
+        this._ammoHint(d);
         if (d.reloading) {
             this.el.reloadIndicator.classList.add('active');
             this.el.reloadFill.style.width = (d.reloadProgress * 100) + '%';
         }
+    }
+
+    /** Contextual prompt under the ammo count: tells the player what to do, only when it matters. */
+    _ammoHint(d) {
+        const hint = this.el.ammoHint;
+        let text = '', cls = '';
+        if (d.reloading) text = '';
+        else if (d.current <= 0 && d.reserve <= 0) { text = 'NO AMMO'; cls = 'empty'; }
+        else if (d.current <= 0) { text = '[R] RELOAD'; cls = 'empty'; }
+        else if (d.current <= Math.ceil(d.magSize * 0.2) && d.reserve > 0) { text = '[R] RELOAD'; cls = 'low'; }
+        hint.textContent = text;
+        hint.className = cls;
     }
 
     _onReload(d) {
@@ -90,6 +108,17 @@ export class HUDManager {
         this.el.healthBar.style.width = pct + '%';
         this.el.healthValue.textContent = Math.ceil(current);
         this.el.healthBar.classList.toggle('low', pct < 35);
+        this.el.root.classList.toggle('low-health', pct < 35 && current > 0);
+        if (this.lastHealth !== null && current > this.lastHealth + 0.5) this._pulse(this.el.healthBlock, 'healed');
+        this.lastHealth = current;
+    }
+
+    /** Restart a one-shot CSS animation class. */
+    _pulse(el, cls) {
+        if (!el) return;
+        el.classList.remove(cls);
+        void el.offsetWidth;
+        el.classList.add(cls);
     }
 
     _setArmor(current, max) {
@@ -114,10 +143,12 @@ export class HUDManager {
         this.el.objText.style.color = '';
         this.el.objList.innerHTML = d.list.map(o =>
             `<div class="ol-item ${o.completed ? 'done' : ''}">${o.text}</div>`).join('');
+        this._pulse(this.el.objectiveTracker, 'updated');
     }
 
     _flashObjective() {
         this.el.objText.style.color = 'var(--health)';
+        this._pulse(this.el.objectiveTracker, 'updated');
         setTimeout(() => { this.el.objText.style.color = ''; }, 600);
     }
 
@@ -181,9 +212,11 @@ export class HUDManager {
         // Map yaw to 0-360 heading and scroll the strip
         let deg = (-yawRadians * 180 / Math.PI) % 360;
         if (deg < 0) deg += 360;
-        const per = 42; // approx px per direction tick
+        const per = 42; // fixed tick width (see .cp in frontline.css)
         const offset = (deg / 360) * this.compassDirs.length * per;
-        this.el.compassStrip.style.transform = `translateX(${110 - offset}px)`;
+        this.el.compassStrip.style.transform = `translateX(${160 - per / 2 - offset}px)`;
+        const heading = String(Math.round(deg) % 360).padStart(3, '0');
+        if (heading !== this._heading) { this._heading = heading; this.el.compassHeading.textContent = heading; }
     }
 
     update(dt) {

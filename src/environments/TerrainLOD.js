@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from '/node_modules/three/build/three.module.js';
 
 export function buildTerrainLOD(group, ground, distances = [45, 100], shadowDistance = 50) {
     const source = ground.geometry;

@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from '/node_modules/three/build/three.module.js';
 import { Weapon } from './Weapon.js';
 import { WEAPON_DATA, DEFAULT_LOADOUT } from './WeaponData.js';
 import { WeaponEffects } from './WeaponEffects.js';
@@ -643,6 +643,7 @@ export class WeaponManager {
                 const zone = isHeadshot ? weapon.data.headshotMult : localY < hitEnemy.height * 0.48 ? 0.65 : 1;
                 const dmg = weapon.damage * zone;
                 this.effects.spawnHitMarker(point);
+                if (this.audio) this.audio.playImpact(isHeadshot ? 0.35 : 0.22, 'flesh');
                 let killed = false;
                 if (this.deps.onEnemyHit) killed = !!this.deps.onEnemyHit(hitEnemy, dmg, point, isHeadshot);
                 this.hitmarkerTimer = 0.15;

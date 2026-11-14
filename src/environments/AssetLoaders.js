@@ -1,7 +1,7 @@
-import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
-import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js';
+import * as THREE from '/node_modules/three/build/three.module.js';
+import { GLTFLoader } from '/node_modules/three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from '/node_modules/three/examples/jsm/loaders/DRACOLoader.js';
+import { KTX2Loader } from '/node_modules/three/examples/jsm/loaders/KTX2Loader.js';
 import { assetStream } from './AssetStream.js';
 
 /**

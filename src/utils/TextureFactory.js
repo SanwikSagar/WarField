@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from '/node_modules/three/build/three.module.js';
 
 /**
  * Procedural PBR-style texture factory. Every surface is built from properly

@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from '/node_modules/three/build/three.module.js';
 
 /**
  * Ultra-light GPU weather. All particle motion happens in the vertex shader

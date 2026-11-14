@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from '/node_modules/three/build/three.module.js';
 import { getPhoto, requestPhotoDetail, trimPhotoCache } from './PhotoAssets.js';
 
 export function createTextureStream(group, renderer, range = 20, photo = getPhoto(), loadDetail = requestPhotoDetail) {

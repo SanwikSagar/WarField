@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
+import * as THREE from '/node_modules/three/build/three.module.js';
+import { RGBELoader } from '/node_modules/three/examples/jsm/loaders/RGBELoader.js';
 import { loadKTX2 } from './AssetLoaders.js';
 import { assetStream } from './AssetStream.js';
 
@@ -22,9 +22,32 @@ async function loadTexSet(name) {
     }
     const map = await loadKTX2(`/assets/ktx2/${name}_diff.ktx2`);
     if (map) map.colorSpace = THREE.SRGBColorSpace;
-    const set = map ? { map, normalMap: null, normalPromise: null } : null;
+    const set = map ? { map, normalMap: null, normalPromise: null } : await loadJpgSet(name);
     texCache.set(name, set);
     return set;
+}
+
+/**
+ * Full PBR set straight from Poly Haven's 1k JPGs (colour + GL normal + roughness)
+ * in /assets/textures/city. Used for sets that haven't been run through the KTX2
+ * compressor; the roughness/normal maps make them read noticeably more real.
+ */
+const jpgLoader = new THREE.TextureLoader();
+function loadJpg(url, srgb) {
+    return new Promise(resolve => jpgLoader.load(url, (t) => {
+        t.wrapS = t.wrapT = THREE.RepeatWrapping;
+        t.anisotropy = 8;
+        t.colorSpace = srgb ? THREE.SRGBColorSpace : THREE.NoColorSpace;
+        resolve(t);
+    }, undefined, () => resolve(null)));
+}
+async function loadJpgSet(name) {
+    const base = `/assets/textures/city/${name}`;
+    const [map, normalMap, roughnessMap] = await Promise.all([
+        loadJpg(`${base}_diff_1k.jpg`, true), loadJpg(`${base}_nor_gl_1k.jpg`, false), loadJpg(`${base}_rough_1k.jpg`, false)
+    ]);
+    if (!map) { normalMap?.dispose(); roughnessMap?.dispose(); return null; }
+    return { map, normalMap, roughnessMap, roughness: 1, normalPromise: null, pbr: true };
 }
 
 function loadHDR(name) {

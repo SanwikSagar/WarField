@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import { SimplifyModifier } from 'three/examples/jsm/modifiers/SimplifyModifier.js';
+import * as THREE from '/node_modules/three/build/three.module.js';
+import { SimplifyModifier } from '/node_modules/three/examples/jsm/modifiers/SimplifyModifier.js';
 import { InstanceLOD } from './Foliage.js';
 import { bakeImpostor } from './Impostors.js';
 
