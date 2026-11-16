@@ -383,6 +383,12 @@ export class Game {
         this._clearGameplay();
 
         const cfg = BIOMES[mission.biome] || {};
+        const quality = this.renderer.getSettings();
+        const setStage = (text, progress) => {
+            loadingScreen.status(text);
+            loadingScreen.progress(progress);
+        };
+        setStage('INITIAL GAME ASSETS', 0.12);
         const civilianModels = mission.biome === 'city' ? ['man', 'woman', 'man2'] : mission.biome === 'deadzone' ? ['man'] : [];
         trimCivilianModels(civilianModels);
         await Promise.all([
@@ -397,20 +403,18 @@ export class Game {
             ])
                 .catch(e => { console.warn('Characters/weapons unavailable:', e); }),
             loadWarModels(warIds(cfg)).catch(e => { console.warn('War models unavailable:', e); }),
-            loadPhotoAssets([...(cfg.photo || []), ...(cfg.war ? WAR_TEXTURES : [])], cfg.hdr && cfg.hdr.file)
+            loadPhotoAssets([...(cfg.photo || []), ...(cfg.war ? WAR_TEXTURES : [])], quality.loadHDR && cfg.hdr ? cfg.hdr.file : null)
                 .catch(e => { console.warn('Photo assets unavailable:', e); })
         ]);
         if (stale()) return;
-        const fl0 = document.getElementById('loading-fill');
-        if (fl0) fl0.style.width = '55%';
+        setStage('LEVEL LOADING', 0.55);
         await new Promise(r => setTimeout(r, 16)); // let the loading bar paint
         if (stale()) return;
 
         // Build the level
-        const level = await this.sceneManager.loadLevel(mission.biome, { ...this.renderer.getSettings(), renderer: this.renderer.renderer });
+        const level = await this.sceneManager.loadLevel(mission.biome, { ...quality, renderer: this.renderer.renderer });
         if (stale()) return;
-        const fl = document.getElementById('loading-fill');
-        if (fl) fl.style.width = '70%';
+        setStage('LEVEL LOADED - PREPARING GAMEPLAY', 0.75);
 
         this.renderer.setExposure(level.exposure || 1.2);
         this.renderer.setGrade(cfg.grade);
@@ -523,10 +527,11 @@ export class Game {
         document.body.classList.add('in-game');
         this.hud.setIntel(saveManager.campaign.collectedIntel.length);
 
-        if (fl) fl.style.width = '100%';
+        setStage('PREPARING GAMEPLAY', 0.88);
         await this._warmupShaders(level);
         if (stale()) return;
         this._buildProbe();
+        setStage('REALTIME STREAMING ACTIVE', 1);
         this._missionReadyTimer = setTimeout(() => {
             this._missionReadyTimer = null;
             const overlay = this._loadingEl;

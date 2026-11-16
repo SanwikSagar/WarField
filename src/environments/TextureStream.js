@@ -1,7 +1,7 @@
 import * as THREE from '/node_modules/three/build/three.module.js';
 import { getPhoto, requestPhotoDetail, trimPhotoCache } from './PhotoAssets.js';
 
-export function createTextureStream(group, renderer, range = 20, photo = getPhoto(), loadDetail = requestPhotoDetail) {
+export function createTextureStream(group, renderer, range = 20, photo = getPhoto(), loadDetail = requestPhotoDetail, options = {}) {
     const names = new Map(), records = new Map();
     Object.entries(photo?.tex || {}).forEach(([name, set]) => { if (set?.map) names.set(set.map, name); });
     group.updateMatrixWorld(true);
@@ -21,8 +21,12 @@ export function createTextureStream(group, renderer, range = 20, photo = getPhot
     });
     const entries = [...records.values()];
     const point = new THREE.Vector3(), instance = new THREE.Matrix4(), world = new THREE.Matrix4();
-    let elapsed = Infinity, disposed = false, loaded = 0;
-    const isNear = (record, camera) => {
+    let elapsed = Infinity, elapsedTime = 0, disposed = false, loaded = 0;
+    const interval = Math.max(0.05, options.interval ?? 0.2);
+    const batch = Math.max(1, Math.floor(options.batch ?? 1));
+    const unloadDelay = Math.max(interval, options.unloadDelay ?? 24);
+    const distanceTo = (record, camera) => {
+        let closest = Infinity;
         for (const mesh of record.meshes) {
             if (!mesh.visible || mesh.isInstancedMesh && !mesh.count) continue;
             if (!mesh.geometry.boundingSphere) mesh.geometry.computeBoundingSphere();
@@ -34,20 +38,37 @@ export function createTextureStream(group, renderer, range = 20, photo = getPhot
                     world.multiplyMatrices(mesh.matrixWorld, instance);
                 } else world.copy(mesh.matrixWorld);
                 point.copy(sphere.center).applyMatrix4(world);
-                if (point.distanceTo(camera) - sphere.radius * world.getMaxScaleOnAxis() < range) return true;
+                closest = Math.min(closest, point.distanceTo(camera) - sphere.radius * world.getMaxScaleOnAxis());
             }
         }
-        return false;
+        return closest;
     };
     trimPhotoCache();
     return {
         update: (camera, direction, dt = 0.016) => {
             if (disposed) return;
             elapsed += dt;
-            if (elapsed < 0.2) return;
+            elapsedTime += dt;
+            if (elapsed < interval) return;
             elapsed = 0;
+            const now = elapsedTime;
+            const nearby = [];
             for (const record of entries) {
-                if (record.requested || !isNear(record, camera)) continue;
+                const distance = distanceTo(record, camera);
+                if (distance < range) {
+                    record.lastNearTime = now;
+                    if (!record.requested) nearby.push({ record, distance });
+                } else if (record.streamed && now - record.lastNearTime >= unloadDelay) {
+                    record.material.normalMap = record.original;
+                    record.material.needsUpdate = true;
+                    record.streamed.dispose();
+                    record.streamed = null;
+                    record.requested = false;
+                    loaded--;
+                }
+            }
+            nearby.sort((a, b) => a.distance - b.distance);
+            nearby.slice(0, batch).forEach(({ record }) => {
                 record.requested = true;
                 loadDetail(record.name).then(texture => {
                     if (disposed || !texture) return;
@@ -63,8 +84,7 @@ export function createTextureStream(group, renderer, range = 20, photo = getPhot
                     renderer?.initTexture(normal);
                     loaded++;
                 }).catch(error => { console.warn('Texture detail stream skipped:', error); });
-                break;
-            }
+            });
         },
         getStats: () => ({ candidates: entries.length, requested: entries.filter(record => record.requested).length, loaded }),
         dispose: () => {

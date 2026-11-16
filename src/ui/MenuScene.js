@@ -5,11 +5,12 @@ import { TextureFactory } from '../utils/TextureFactory.js';
 import { Weather } from '../environments/Weather.js';
 import { loadCharacters, createCharacter } from '../core/CharacterFactory.js';
 import { loadWeaponModels } from '../weapons/WeaponModels.js';
-import { loadPropModels, getPropTemplate } from '../environments/PropModels.js';
+import { loadPropModels, getPropTemplate, pinPropModels, unpinPropModels } from '../environments/PropModels.js';
 import { audio } from '../audio/AudioManager.js';
 import { buildMenuForest, updateWindTime } from '../environments/Foliage.js';
 import { RGBELoader } from '/node_modules/three/examples/jsm/loaders/RGBELoader.js';
 import { assetUrl } from '../utils/assetUrl.js';
+import { Platform } from '../core/Platform.js';
 
 /**
  * Cinematic main-menu backdrop (GDD 10.4): a rain-soaked forward camp at dusk,
@@ -109,9 +110,12 @@ export class MenuScene {
         requestAnimationFrame(() => {
             const loadBackdropAssets = () => {
                 if (this.disposed) return;
-                this._buildForest();
-                this._loadCharacters();
-                this._loadProps();
+                const tier = Platform.mobile ? 'low' : Platform.tier;
+                if (tier !== 'low') this._loadCharacters();
+                if (tier === 'high' || tier === 'ultra' || tier === 'extreme') {
+                    this._buildForest();
+                    this._loadProps();
+                }
             };
             if (window.requestIdleCallback) {
                 window.requestIdleCallback(loadBackdropAssets, { timeout: 1500 });
@@ -1103,12 +1107,19 @@ export class MenuScene {
 
     async _loadProps() {
         const ids = ['wooden_military_crate', 'ammo_box', 'Barrel_01', 'metal_jerrycan_green', 'portable_generator'];
-        try { await loadPropModels({ phProps: ids.map(id => ({ id })) }); } catch (e) { return; }
+        pinPropModels(ids);
+        this._pinnedProps = ids;
+        try { await loadPropModels({ phProps: ids.map(id => ({ id })) }); } catch (e) {
+            unpinPropModels(ids);
+            this._pinnedProps = null;
+            return;
+        }
         if (this.disposed) return;
         const place = (id, x, z, yaw, s = 1, y = 0) => {
             const tpl = getPropTemplate(id);
             if (!tpl) return;
             const o = tpl.clone(true);
+            o.traverse(child => { child.userData.sharedResources = true; });
             o.position.set(x, y, z); o.rotation.y = yaw; o.scale.setScalar(s);
             this.group.add(o);
         };
@@ -1287,10 +1298,12 @@ export class MenuScene {
         this.scene.remove(this.group);
         if (this.forest) { this.forest.dispose(); this.forest = null; }
         if (this.envTex) { this.scene.environment = null; this.envTex.dispose(); }
+        if (this._pinnedProps) { unpinPropModels(this._pinnedProps); this._pinnedProps = null; }
         [this.hero, this.patrol && this.patrol.c, this.sentry].forEach(c => c && c.dispose());
         this.group.traverse(o => {
-            if (o.geometry) o.geometry.dispose();
+            if (!o.userData.sharedResources && o.geometry) o.geometry.dispose();
             if (o.material) {
+                if (o.userData.sharedResources) return;
                 const mats = Array.isArray(o.material) ? o.material : [o.material];
                 mats.forEach(m => m.dispose());
             }

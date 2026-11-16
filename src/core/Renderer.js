@@ -133,15 +133,16 @@ const POST = {
 /** Phones / tablets: whatever preset is chosen, cap the expensive parts (fill rate, vegetation, post). */
 const MOBILE = {
     mobile: true, pixelRatio: Math.min(dpr, 1.0), msaa: 2, ssr: false, ao: false, shadowType: THREE.PCFShadowMap,
+    loadHDR: false, textureDetailDistance: 8, textureStreamInterval: 0.65, textureStreamBatch: 1, textureUnloadDelay: 10,
     grassMul: 0.35, treeMul: 0.5, terrainSeg: 110, treeLod: [26, 60, 140], treeShadowLods: [0], grassDist: 48,
     fieldMul: 0.12, fieldArea: 28, bushNear: 10, fx: 0.6, propLod: [18, 40, 80, 160], impostorResolution: 64
 };
 const QUALITY = {
-    low:    { pixelRatio: 1.0,  shadow: 1024, bloom: false, ssr: false, msaa: 0, shadowType: THREE.PCFShadowMap,     grassMul: 0.55, treeMul: 0.6,  terrainSeg: 150,  treeLod: [34, 78, 185],  treeShadowLods: [0],       lodCount: 3, grassDist: 70, shadowExtent: 44, fieldMul: 0.25, fieldArea: 40, bushNear: 12 },
-    medium: { pixelRatio: 1.0,  shadow: 1024, bloom: true, ssr: false, msaa: 2, shadowType: THREE.PCFShadowMap,     grassMul: 0.8,  treeMul: 0.85, terrainSeg: 170, treeLod: [40, 92, 210],  treeShadowLods: [0, 1],    lodCount: 3, grassDist: 85, shadowExtent: 52, fieldMul: 0.55, fieldArea: 46 },
-    high:   { pixelRatio: Math.min(dpr, 1.5), shadow: 2048, bloom: true, ssr: true, msaa: 2, shadowType: THREE.PCFSoftShadowMap, grassMul: 1.0, treeMul: 1.0, terrainSeg: 200, treeLod: [46, 105, 235], treeShadowLods: [0, 1], lodCount: 3, grassDist: 105, shadowExtent: 60, fieldMul: 1.0, fieldArea: 54, bushNear: 24 },
-    extreme: { pixelRatio: dpr, shadow: 4096, bloom: true, ssr: true, msaa: 4, ao: true, shadowType: THREE.PCFSoftShadowMap, grassMul: 1.7, treeMul: 1.5, terrainSeg: 300, treeLod: [62, 140, 300], treeShadowLods: [0, 1, 2], lodCount: 3, grassDist: 150, shadowExtent: 80, fieldMul: 2.1, fieldArea: 74, bushNear: 45, fx: 1.6 },
-    ultra:  { pixelRatio: dpr,  shadow: 4096, bloom: true,  ssr: true, msaa: 4, shadowType: THREE.PCFSoftShadowMap, grassMul: 1.3,  treeMul: 1.15, terrainSeg: 240, treeLod: [52, 118, 260], treeShadowLods: [0, 1],    lodCount: 3, grassDist: 125, shadowExtent: 68, fieldMul: 1.4, fieldArea: 62, bushNear: 30 }
+    low:    { pixelRatio: 1.0,  shadow: 1024, bloom: false, ssr: false, msaa: 0, shadowType: THREE.PCFShadowMap,     loadHDR: false, textureDetailDistance: 9,  textureStreamInterval: 0.55, textureStreamBatch: 1, textureUnloadDelay: 12, grassMul: 0.55, treeMul: 0.6,  terrainSeg: 150,  treeLod: [34, 78, 185],  treeShadowLods: [0],       lodCount: 3, grassDist: 70, shadowExtent: 44, fieldMul: 0.25, fieldArea: 40, bushNear: 12 },
+    medium: { pixelRatio: 1.0,  shadow: 1024, bloom: true, ssr: false, msaa: 2, shadowType: THREE.PCFShadowMap,     loadHDR: false, textureDetailDistance: 14, textureStreamInterval: 0.38, textureStreamBatch: 1, textureUnloadDelay: 18, grassMul: 0.8,  treeMul: 0.85, terrainSeg: 170, treeLod: [40, 92, 210],  treeShadowLods: [0, 1],    lodCount: 3, grassDist: 85, shadowExtent: 52, fieldMul: 0.55, fieldArea: 46 },
+    high:   { pixelRatio: Math.min(dpr, 1.5), shadow: 2048, bloom: true, ssr: true, msaa: 2, shadowType: THREE.PCFSoftShadowMap, loadHDR: true, textureDetailDistance: 22, textureStreamInterval: 0.24, textureStreamBatch: 1, textureUnloadDelay: 24, grassMul: 1.0, treeMul: 1.0, terrainSeg: 200, treeLod: [46, 105, 235], treeShadowLods: [0, 1], lodCount: 3, grassDist: 105, shadowExtent: 60, fieldMul: 1.0, fieldArea: 54, bushNear: 24 },
+    extreme: { pixelRatio: dpr, shadow: 4096, bloom: true, ssr: true, msaa: 4, ao: true, shadowType: THREE.PCFSoftShadowMap, loadHDR: true, textureDetailDistance: 34, textureStreamInterval: 0.12, textureStreamBatch: 3, textureUnloadDelay: 40, grassMul: 1.7, treeMul: 1.5, terrainSeg: 300, treeLod: [62, 140, 300], treeShadowLods: [0, 1, 2], lodCount: 3, grassDist: 150, shadowExtent: 80, fieldMul: 2.1, fieldArea: 74, bushNear: 45, fx: 1.6 },
+    ultra:  { pixelRatio: dpr,  shadow: 4096, bloom: true,  ssr: true, msaa: 4, shadowType: THREE.PCFSoftShadowMap, loadHDR: true, textureDetailDistance: 28, textureStreamInterval: 0.16, textureStreamBatch: 2, textureUnloadDelay: 32, grassMul: 1.3,  treeMul: 1.15, terrainSeg: 240, treeLod: [52, 118, 260], treeShadowLods: [0, 1],    lodCount: 3, grassDist: 125, shadowExtent: 68, fieldMul: 1.4, fieldArea: 62, bushNear: 30 }
 };
 
 /**

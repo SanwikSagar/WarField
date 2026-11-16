@@ -25,6 +25,7 @@ const SOLID = new Set(['ammo_box', 'old_military_crate', 'wooden_military_crate'
 const FOLIAGE = new Set(['fern_02', 'shrub_02', 'nettle_plant', 'dry_branches_medium_01']);
 const T = {};
 const loading = new Map();
+const pinned = new Set();
 const detail = TextureFactory.ground(64, 2);
 // one adjusted material per template material, so identical props batch into one LOD draw
 const SHARED = new Map();
@@ -74,6 +75,7 @@ export function loadPropModels(config = null) {
 
 export function trimPropModels(config = null) {
     const keep = config ? propIds(config) : new Set();
+    pinned.forEach(id => keep.add(id));
     const removed = [];
     for (const id of Object.keys(T)) {
         if (keep.has(id)) continue;
@@ -102,6 +104,14 @@ export function trimPropModels(config = null) {
         material.dispose();
     });
     discard.textures.forEach(texture => { if (!retained.textures.has(texture)) texture.dispose(); });
+}
+
+export function pinPropModels(ids) {
+    ids.forEach(id => pinned.add(id));
+}
+
+export function unpinPropModels(ids) {
+    ids.forEach(id => pinned.delete(id));
 }
 
 export function hasProp(id) { return !!T[id]; }

@@ -57,6 +57,9 @@ export class LevelBuilder {
             fieldMul: detail.fieldMul ?? 1,
             bushNear: detail.bushNear ?? 18,
             fieldArea: detail.fieldArea ?? 44,
+            textureStreamInterval: detail.textureStreamInterval ?? 0.2,
+            textureStreamBatch: detail.textureStreamBatch ?? 1,
+            textureUnloadDelay: detail.textureUnloadDelay ?? 24,
             renderer: detail.renderer || null
         };
         Object.assign(this.detail, environmentPolicy({ ...detail, ...this.detail, ...(config.view || {}) }));
@@ -151,7 +154,11 @@ export class LevelBuilder {
         safe('baked lighting', () => this._bakeLighting(config));
         this._calibrateLevelMaterials();
         this.disposables.push(bindReflectionRange(this.group, this.detail.reflectionDistance));
-        this.textureStream = push(createTextureStream(this.group, this.detail.renderer, this.detail.textureDetailDistance));
+        this.textureStream = push(createTextureStream(this.group, this.detail.renderer, this.detail.textureDetailDistance, undefined, undefined, {
+            interval: this.detail.textureStreamInterval,
+            batch: this.detail.textureStreamBatch,
+            unloadDelay: this.detail.textureUnloadDelay
+        }));
 
         this.weather = config.weather && config.weather.count > 0 ? new Weather({
             ...config.weather, range: this.detail.weatherDistance, area: this.detail.weatherDistance * 2,
