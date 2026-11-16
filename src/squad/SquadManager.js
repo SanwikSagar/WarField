@@ -1,6 +1,7 @@
 import * as THREE from '/node_modules/three/build/three.module.js';
 import { globalEvents } from '../core/EventManager.js';
 import { createCharacter, hasCharacters } from '../core/CharacterFactory.js';
+import { animation } from '../animation/AnimationSystem.js';
 
 /**
  * Squad AI (GDD 5.6 / 11.8). Friendly operators that hold a formation
@@ -101,6 +102,7 @@ class SquadMember {
         const ch = hasCharacters() ? createCharacter(kind, 'ally', this.name === 'Maya' ? 'm5scw' : 'urgi') : null;
         if (ch) {
             this.char = ch; this.group = ch.root; this.materials = ch.materials;
+            animation.addActor(ch, { group: ch.root, getState: () => this._animState });
             this.scene.add(this.group);
             return;
         }
@@ -269,13 +271,16 @@ class SquadMember {
 
     _muzzleFlash(pos) {
         if (!this._flash) {
-            const c = document.createElement('canvas'); c.width = c.height = 64;
-            const ctx = c.getContext('2d');
-            const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-            g.addColorStop(0, 'rgba(255,240,200,1)'); g.addColorStop(1, 'rgba(255,140,40,0)');
-            ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
+            if (!SquadMember._flashTex) {   // shared by every squadmate, created once
+                const c = document.createElement('canvas'); c.width = c.height = 64;
+                const ctx = c.getContext('2d');
+                const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+                g.addColorStop(0, 'rgba(255,240,200,1)'); g.addColorStop(1, 'rgba(255,140,40,0)');
+                ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
+                SquadMember._flashTex = new THREE.CanvasTexture(c);
+            }
             this._flash = new THREE.Sprite(new THREE.SpriteMaterial({
-                map: new THREE.CanvasTexture(c), blending: THREE.AdditiveBlending,
+                map: SquadMember._flashTex, blending: THREE.AdditiveBlending,
                 transparent: true, depthWrite: false, opacity: 0
             }));
             this._flash.scale.set(0.45, 0.45, 0.45);
@@ -300,7 +305,7 @@ class SquadMember {
             }
             const v = this._vel || this.velocity, sp = v.length();
             const ys = Math.sin(this._yaw || 0), yc = Math.cos(this._yaw || 0);
-            this.char.update(dt, {
+            this._animState = ({
                 speed: sp, aiming: !!this.targetEnemy && !(this.reloadT >= 0), dead: false, look,
                 moveZ: sp > 0.05 ? (v.x * ys + v.z * yc) / sp : 1, moveX: sp > 0.05 ? (v.x * yc - v.z * ys) / sp : 0,
                 reload: this.reloadT >= 0 ? this.reloadT / 2.3 : -1
@@ -322,8 +327,8 @@ class SquadMember {
 
     dispose() {
         this.scene.remove(this.group);
-        if (this._flash) this.scene.remove(this._flash);
-        if (this.char) { this.char.dispose(); return; }
+        if (this._flash) { this.scene.remove(this._flash); this._flash.material.dispose(); }
+        if (this.char) { animation.removeActor(this.char); this.char.dispose(); return; }
         this.group.traverse(o => { if (o.geometry) o.geometry.dispose(); });
         this.materials.forEach(m => m.dispose());
     }

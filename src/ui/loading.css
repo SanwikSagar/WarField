@@ -1,0 +1,52 @@
+/* Loading screen: key art slideshow with blood-splash morph (src/ui/LoadingScreen.js). */
+#loading-screen {
+    position: fixed; inset: 0; z-index: 9000; overflow: hidden; background: #070605;
+    opacity: 1; transition: opacity .6s ease;
+}
+#loading-screen.fade-out { opacity: 0; pointer-events: none; }
+#loading-screen .ld-stage {
+    position: absolute; inset: -3%;
+    animation: ldDrift 18s ease-in-out infinite alternate; will-change: transform;
+}
+@keyframes ldDrift { from { transform: scale(1.0) translate(0, 0); } to { transform: scale(1.07) translate(-1.2%, -0.8%); } }
+#loading-screen .ld-img { position: absolute; inset: 0; background: #070605 center / cover no-repeat; }
+#loading-screen .ld-base { filter: saturate(0.92) contrast(1.04); }
+#loading-screen .ld-reveal, #loading-screen .ld-blood {
+    position: absolute; inset: 0; visibility: hidden; will-change: transform;
+    -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
+#loading-screen .ld-next { will-change: transform; filter: saturate(0.92) contrast(1.04); }
+#loading-screen .ld-blood {
+    background:
+        radial-gradient(circle at 42% 38%, rgba(160, 20, 16, 0.95), rgba(92, 6, 6, 0.98) 45%, rgba(40, 2, 2, 1) 80%);
+}
+#loading-screen .ld-shade {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+        linear-gradient(180deg, rgba(5, 4, 4, 0.72) 0%, rgba(5, 4, 4, 0) 26%, rgba(5, 4, 4, 0) 58%, rgba(5, 4, 4, 0.9) 100%),
+        radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.55) 100%);
+}
+#loading-screen .ld-top { position: absolute; left: clamp(20px, 4vw, 64px); top: clamp(18px, 4vh, 48px); }
+#loading-screen .loading-logo {
+    font: 700 clamp(26px, 3.4vw, 46px) 'Rajdhani', 'Barlow Condensed', sans-serif; letter-spacing: 0.32em; color: #f3eee2;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.7);
+}
+#loading-screen .ld-caption { margin-top: 6px; font: 600 12px 'Rajdhani', sans-serif; letter-spacing: 0.3em; color: rgba(238, 138, 43, 0.9); }
+#loading-screen .ld-bottom {
+    position: absolute; left: clamp(20px, 4vw, 64px); right: clamp(20px, 4vw, 64px); bottom: clamp(18px, 5vh, 52px);
+    display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto; gap: 12px 24px; align-items: end;
+}
+#loading-screen .ld-tip { display: flex; gap: 12px; align-items: baseline; max-width: 640px; }
+#loading-screen .ld-tip span { flex: none; font: 700 10px 'Rajdhani', sans-serif; letter-spacing: 0.24em; color: #0b0c0d; background: #ee8a2b; padding: 2px 7px; }
+#loading-screen .ld-tip p { margin: 0; font: 500 15px/1.4 'Rajdhani', sans-serif; letter-spacing: 0.03em; color: rgba(243, 238, 226, 0.85); text-shadow: 0 1px 6px rgba(0,0,0,0.8); }
+#loading-screen .loading-status { font: 600 12px 'Rajdhani', sans-serif; letter-spacing: 0.22em; color: rgba(243, 238, 226, 0.7); text-align: right; }
+#loading-screen .loading-bar { grid-column: 1 / -1; height: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
+#loading-screen .loading-fill { height: 100%; width: 8%; background: linear-gradient(90deg, #8c1410, #ee8a2b); transition: width .5s ease; }
+@media (max-width: 760px) {
+    #loading-screen .ld-bottom { grid-template-columns: 1fr; }
+    #loading-screen .loading-status { text-align: left; }
+    #loading-screen .ld-tip p { font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) { #loading-screen .ld-stage { animation: none; } }
+#loading-screen .loading-bar { width: auto; margin: 0; }
+#loading-screen .loading-logo { font-weight: 700; }

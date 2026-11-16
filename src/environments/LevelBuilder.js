@@ -5,6 +5,7 @@ import { Sky } from './Sky.js';
 import { CollisionWorld } from '../core/CollisionWorld.js';
 import { placeProp, cullProps, hasProp, getPropTemplate } from './PropModels.js';
 import { getPhoto, analyzeHDR, getPhotoCacheStats } from './PhotoAssets.js';
+import { buildDamage } from './Damage.js';
 import { Weather } from './Weather.js';
 import { buildGrassField } from './GrassField.js';
 import { environmentPolicy } from './EnvironmentPolicy.js';
@@ -14,6 +15,8 @@ import { createTextureStream } from './TextureStream.js';
 import { assetStream } from './AssetStream.js';
 import * as Arch from './Architecture.js';
 import * as City from './CityKit.js';
+import { placeWar, warRadius } from './WarModels.js';
+import { bakeLevelLighting, applyBaked } from '../render/BakedLighting.js';
 import {
     buildForest, buildBushes, buildGrass, buildRocks, buildModelScatter, registerScatterModel,
     getFoliageAssets, updateWindTime
@@ -120,6 +123,8 @@ export class LevelBuilder {
         this.deco.flush();
         safe('scanned props', () => this._placeScannedProps(config));
 
+        safe('war dressing', () => this._buildWar(config));
+        safe('damage', () => { this.damage = push(buildDamage(this, config)); });
         safe('puddles', () => this._buildPuddles(config));
         safe('mist', () => this._buildMist(config));
 
@@ -143,6 +148,7 @@ export class LevelBuilder {
         safe('terrain LOD', () => push(buildTerrainLOD(this.group, this.ground, this.detail.terrainLod, this.detail.shadowDistance)));
         safe('scenery LOD', () => push(buildSceneryLOD(ctx, [this.ground, this.puddleMesh].filter(Boolean))));
         (this._propObjs || []).forEach(prop => { prop.o.userData.lodManaged = true; });
+        safe('baked lighting', () => this._bakeLighting(config));
         this._calibrateLevelMaterials();
         this.disposables.push(bindReflectionRange(this.group, this.detail.reflectionDistance));
         this.textureStream = push(createTextureStream(this.group, this.detail.renderer, this.detail.textureDetailDistance));
@@ -169,6 +175,8 @@ export class LevelBuilder {
             world: this.world,
             cover: this.cover,
             spawns: config.spawns,
+            war: this.war,
+            bake: this._bake,
             sky: this.sky,
             bounds: this.bounds,
             exposure: config.sky?.exposure ?? 1.2,
@@ -452,6 +460,71 @@ export class LevelBuilder {
         return t || fallback();
     }
 
+    /**
+     * Battlefield dressing from config.war: CC0 vehicles/props (WarModels), scorched craters with
+     * debris, and the list of fires / smoke columns / animated parts that the AnimationSystem and
+     * FireSystem bring to life at runtime (nothing here ticks per frame).
+     */
+    _buildWar(config) {
+        const w = config.war;
+        this.war = { fires: [], columns: [], turrets: [], blinkers: [], blasts: (w && w.blasts) || null };
+        if (!w) return;
+        const fire = (x, y, z, size, smoke = 1) => this.war.fires.push({ x, y, z, size, smoke });
+        for (const o of w.objects || []) {
+            const r = placeWar(this, o.id, o.x, o.z, o);
+            if (!r) continue;
+            if (o.fire) fire(r.top.x, r.top.y, r.top.z, o.fire, o.smoke ?? 1);
+            if (o.id === 'turret_gun') {
+                r.model.traverse(n => { if (/Top/i.test(n.name) && !this.war.turrets.some(t => t.root === r.root)) this.war.turrets.push({ node: n, root: r.root, phase: Math.random() * 6 }); });
+            }
+            if (/^(antenna|transmission_tower|watchtower)/.test(o.id)) this.war.blinkers.push({ x: r.top.x, y: r.box.max.y + 0.2, z: r.top.z });
+        }
+        for (const f of w.fires || []) fire(f.x, this.heightAt(f.x, f.z) + (f.y ?? 0.15), f.z, f.size ?? 1, f.smoke ?? 1);
+        for (const c of w.craters || []) this._buildCrater(c);
+        (w.columns || []).forEach(c => this.war.columns.push(c));
+        (this._burnSpots || []).forEach(s => fire(s.x, s.y, s.z, s.size, 1.2));
+    }
+
+    /** Scorched crater: charred PBR decal draped on the terrain, a dished centre, and scattered debris. */
+    _buildCrater(c) {
+        const P = getPhoto();
+        const set = P && P.tex && P.tex.burned_ground_01;
+        const r = c.r, rnd = this.rand;
+        const geo = new THREE.RingGeometry(0.001, r, 44, 9);
+        geo.rotateX(-Math.PI / 2);
+        const pos = geo.attributes.position;
+        for (let i = 0; i < pos.count; i++) {
+            const lx = pos.getX(i), lz = pos.getZ(i), d = Math.hypot(lx, lz) / r;
+            const ss = (a, b, x) => { x = Math.min(1, Math.max(0, (x - a) / (b - a))); return x * x * (3 - 2 * x); };
+            const dish = ss(0.6, 0.85, d) * (1 - ss(0.85, 1, d)) * 0.09;   // raised lip only: the terrain itself is not carved, so nothing may dip below it
+            pos.setY(i, this.heightAt(c.x + lx, c.z + lz) + 0.04 + dish);
+        }
+        pos.needsUpdate = true; geo.computeVertexNormals();
+        const tile = (t) => { if (!t) return null; const m = t.clone(); m.repeat.set(3, 3); m.needsUpdate = true; this.disposables.push(m); return m; };
+        const mat = new THREE.MeshStandardMaterial({
+            map: set ? tile(set.map) : null, normalMap: set ? tile(set.normalMap) : null, roughnessMap: set ? tile(set.roughnessMap) : null,
+            color: set ? 0xffffff : 0x1d1a17, roughness: 1, metalness: 0, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3
+        });
+        mat.onBeforeCompile = (shader) => {
+            shader.vertexShader = shader.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vCr;').replace('#include <uv_vertex>', '#include <uv_vertex>\nvCr = uv;');
+            shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec2 vCr;')
+                .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb *= 0.55; diffuseColor.a *= 1.0 - smoothstep(0.55, 1.0, length(vCr - 0.5) * 2.0);');
+        };
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.receiveShadow = true; mesh.renderOrder = 2;
+        mesh.userData.environmentManaged = true;
+        this.group.add(mesh);
+        this.disposables.push(geo, mat);
+        // debris thrown around the rim
+        const ids = ['debris_pile', 'bricks', 'rocks', 'tires', 'bricks'];
+        const n = 4 + Math.floor(r);
+        for (let i = 0; i < n; i++) {
+            const a = rnd() * Math.PI * 2, d = r * (0.55 + rnd() * 0.5);
+            placeWar(this, ids[Math.floor(rnd() * ids.length)], c.x + Math.cos(a) * d, c.z + Math.sin(a) * d, { rot: rnd() * 6.28, scale: 0.5 + rnd() * 0.7, burn: 0.5, solid: false });
+        }
+        if (c.fire) this.war.fires.push({ x: c.x, y: this.heightAt(c.x, c.z) - 0.1, z: c.z, size: 0.8, smoke: 0.7 });
+    }
+
     /** Hand-placed + scattered CC0 scanned props (crates, drums, generator, stumps, ferns...). */
     _placeScannedProps(config) {
         for (const p of config.phProps || []) placeProp(this, p.id, p.x, p.z, p.rot || 0, p.s || 1);
@@ -643,6 +716,12 @@ export class LevelBuilder {
                 B.push(seg); this.pathSegs.push(seg);
             }
         });
+        const wr = config.war;
+        if (wr) {
+            (wr.objects || []).forEach(o => { const r = warRadius(o.id, o.scale || 1); B.push({ kind: 'struct', x: o.x, z: o.z, rot: o.rot || 0, hw: r, hd: r }); });
+            (wr.craters || []).forEach(c => B.push({ kind: 'clear', x: c.x, z: c.z, r: c.r + 1 }));
+            (wr.fires || []).forEach(f => B.push({ kind: 'clear', x: f.x, z: f.z, r: 2.5 }));
+        }
         const sp = config.spawns;
         if (sp) {
             B.push({ kind: 'clear', x: sp.player.x, z: sp.player.z, r: 9 });
@@ -699,6 +778,32 @@ export class LevelBuilder {
     }
 
     // ── material helpers ─────────────────────────────────────────────────
+    /**
+     * Bake AO + sun shadows + firelight for the whole level into one small texture (see
+     * render/BakedLighting.js). Must run after every collider and fire is known.
+     */
+    _bakeLighting(config) {
+        const b = config.bake || {};
+        const sp = this.sky && this.sky.palette && this.sky.palette.sunPosition;
+        const sunDir = sp ? sp.clone().normalize() : null;
+        const fires = ((this.war && this.war.fires) || []).map(f => ({ x: f.x, z: f.z, size: f.size }));
+        this._bake = bakeLevelLighting({
+            colliders: this.colliders, bounds: this.bounds, sunDir, fires,
+            shadow: b.shadow ?? 0.45, ao: b.ao ?? 0.8, glow: b.glow ?? 1, wet: b.wet ?? 0, cloud: b.cloud ?? 0, size: this.detail.bakeSize || 512
+        });
+        // the baked shadow map (render/ShadowBake.js) covers bounds + 30 m; the box-swept G channel only
+        // takes over on the distant rim beyond it
+        const cover = (this.bounds + 30) * 1.25;
+        this._bake.uniforms.uBakeFade.value.set(cover, cover + 25);
+        this.disposables.push(this._bake);
+        if (this.ground && this.ground.material && (b.wet ?? 0) > 0) {
+            // wet ground reflects the probe: smoother, with a controlled amount of env light
+            const gm = this.ground.material;
+            gm.userData.probe = true;
+            gm.envMapIntensity = 0.3 + 0.5 * b.wet;
+        }
+    }
+
     _calibrateLevelMaterials() {
         this.group.traverse(object => {
             if (!object.isMesh) return;
@@ -711,6 +816,7 @@ export class LevelBuilder {
                 if (!material.isMeshStandardMaterial && !material.isMeshPhysicalMaterial) return;
                 material.flatShading = false;
                 material.dithering = true;
+                if (this._bake && !material.userData.ssrReflective) applyBaked(material, this._bake.uniforms);
                 if (material.normalMap) material.normalScale.multiplyScalar(material.userData?.foliage ? 0.75 : 1);
                 if (material.userData.ssrReflective) return;
                 const metal = material.metalness ?? 0;
@@ -1045,6 +1151,12 @@ export class LevelBuilder {
         } else if (playerPos) {
             this._camPos.copy(playerPos).setY(1.7);
             this._camDir.set(0, 0, -1);
+        }
+        if (this._bake) {
+            const u = this._bake.uniforms, t = this._time;
+            u.uBakeCam.value.copy(this._camPos);
+            u.uBakeTime.value = t;
+            u.uBakeFlick.value = 0.8 + 0.2 * Math.sin(t * 11.3) * Math.sin(t * 5.1) + 0.1 * Math.sin(t * 27.0);   // one flicker for every firelit surface
         }
         if (this.weather) this.weather.update(dt, this._camPos);
         cullProps(this, this._camPos);

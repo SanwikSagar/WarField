@@ -49,7 +49,7 @@ function tbox(lb, deco, w, h, d, tile, mat, M, pos, rot) {
  * soft vertical rain-streak weathering that breaks up texture tiling, and a gentle sun-bleached
  * top. Works for instanced meshes too, so the scenery LOD batches keep it.
  */
-function weather(mat, { grime = 0.5, streak = 0.28 } = {}) {
+export function weather(mat, { grime = 0.5, streak = 0.28, rust = 0 } = {}) {
     mat.onBeforeCompile = (shader) => {
         shader.vertexShader = shader.vertexShader
             .replace('#include <common>', '#include <common>\nvarying vec3 vCityPos;')
@@ -76,9 +76,11 @@ function weather(mat, { grime = 0.5, streak = 0.28 } = {}) {
                     float blotch = 0.88 + 0.12 * cNoise(vCityPos.xz * 0.35 + hh * 0.2);
                     float bleach = 1.0 + 0.06 * smoothstep(8.0, 30.0, hh);
                     diffuseColor.rgb *= base * streaks * blotch * bleach;
+                    float rn = cNoise(vCityPos.xz * 1.1 + vCityPos.y * 0.8) * 0.6 + cNoise(vCityPos.xz * 4.3 + vCityPos.y * 2.1) * 0.4;
+                    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.30, 0.13, 0.05), smoothstep(0.52, 0.78, rn) * ${rust.toFixed(2)});
                 }`);
     };
-    mat.customProgramCacheKey = () => `cityweather${grime}|${streak}`;
+    mat.customProgramCacheKey = () => `cityweather${grime}|${streak}|${rust}`;
     return mat;
 }
 
@@ -92,6 +94,7 @@ function kit(lb) {
     const mkGlass = (color, rough, metal, env) => {
         const m = new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal, envMapIntensity: env });
         m.userData.ssrReflective = true;   // keep the glass settings through the level material calibration
+        m.userData.probe = true;           // reflects the level's one-shot cubemap probe (render/ReflectionProbe.js)
         return m;
     };
     const glass = mkGlass(0x8fa6ba, 0.06, 0.95, 1.5);
@@ -101,7 +104,7 @@ function kit(lb) {
     const lit = new THREE.MeshStandardMaterial({ color: 0x2a2014, emissive: 0xffb866, emissiveIntensity: 1.25, roughness: 0.4 });
     const litCool = new THREE.MeshStandardMaterial({ color: 0x1a2228, emissive: 0x9fc4ff, emissiveIntensity: 0.9, roughness: 0.4 });
     const shop = new THREE.MeshStandardMaterial({ color: 0x3a4652, emissive: 0xffc890, emissiveIntensity: 0.1, roughness: 0.1, metalness: 0.92, envMapIntensity: 1.25 });
-    shop.userData.ssrReflective = true;
+    shop.userData.ssrReflective = true; shop.userData.probe = true;
     const K = lb._cityKit = {
         concrete, ph,
         trim: weather(lb._pbr(ph('concrete_floor_02'), { color: 0xe4e0d6 }), { grime: 0.35, streak: 0.2 }),
@@ -113,7 +116,7 @@ function kit(lb) {
         rail: lb._pbr(metalTex, { color: 0x3a3d42, metalness: 0.75, roughness: 0.45 }),
         frame: new THREE.MeshStandardMaterial({ color: 0x2a2c2e, roughness: 0.55, metalness: 0.4 }),
         board: lb._photo('wood_planks_grey', () => TextureFactory.wood(256, 1)),
-        paint: new THREE.MeshStandardMaterial({ color: 0xe6e2d6, roughness: 0.7 }),
+        paint: weather(new THREE.MeshStandardMaterial({ color: 0xb4afa4, roughness: 0.82 }), { grime: 0.35, streak: 0.3 }),
         paintY: new THREE.MeshStandardMaterial({ color: 0xd8a83a, roughness: 0.7 }),
         soot: new THREE.MeshStandardMaterial({ color: 0x141312, roughness: 1, transparent: true, opacity: 0.55, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }),
         glass, glassDark, glassWarm, lit, litCool, shop,
@@ -269,6 +272,22 @@ export function block(lb, deco, item) {
         if (R() < 0.35) {
             const u = (R() - 0.5) * face.len * 0.6;
             deco.box(1.4 + R() * 1.6, 2 + R() * 3, 0.02, K.soot, M, P(u, GROUND + R() * (h - GROUND - 4) + 2, 0.13), rr);
+        }
+    }
+
+    // War damage: fire in selected upper windows (flames are emitted by the FireSystem) and scorch above them
+    if (item.burn) {
+        for (let i = 0; i < (item.burn.n ?? 3); i++) {
+            const face = faces[Math.floor(R() * faces.length)];
+            const bays = Math.max(1, Math.floor(face.len / BAY)), bw = face.len / bays;
+            const u = -face.len / 2 + (Math.floor(R() * bays) + 0.5) * bw;
+            const f = Math.max(1, floors - 1 - Math.floor(R() * Math.min(4, floors - 1)));
+            const v = GROUND + f * STOREY + STOREY * 0.5;
+            const ca = Math.cos(face.ang), sa = Math.sin(face.ang);
+            const loc = new THREE.Vector3(u * ca + (face.off + 0.5) * sa, v - 0.5, -u * sa + (face.off + 0.5) * ca).applyMatrix4(M);
+            (lb._burnSpots || (lb._burnSpots = [])).push({ x: loc.x, y: loc.y, z: loc.z, size: item.burn.size ?? 2.2 });
+            deco.box(bw * 0.8, 3.6, 0.03, K.soot, M, [u * ca + (face.off + 0.14) * sa, v + 1.9, -u * sa + (face.off + 0.14) * ca], [0, face.ang, 0]);
+            deco.box(1.6, 1.5, 0.05, K.glassDark, M, [u * ca + (face.off + 0.06) * sa, v, -u * sa + (face.off + 0.06) * ca], [0, face.ang, 0]);
         }
     }
 

@@ -1,0 +1,156 @@
+{
+  "asset": {
+    "generator": "glTF-Transform v4.5.1",
+    "version": "2.0"
+  },
+  "accessors": [
+    {
+      "type": "SCALAR",
+      "componentType": 5123,
+      "count": 1500,
+      "bufferView": 0,
+      "byteOffset": 0
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 562,
+      "max": [
+        0.5888825058937073,
+        0.8887919783592224,
+        0.24284429848194122
+      ],
+      "min": [
+        -0.5760610699653625,
+        -0.0004994967021048069,
+        -0.25369879603385925
+      ],
+      "bufferView": 1,
+      "byteOffset": 0
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 562,
+      "bufferView": 1,
+      "byteOffset": 12
+    },
+    {
+      "type": "VEC2",
+      "componentType": 5126,
+      "count": 562,
+      "bufferView": 1,
+      "byteOffset": 24
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 3000,
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 3000,
+      "byteLength": 17984,
+      "byteStride": 32,
+      "target": 34962
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987,
+      "wrapS": 10497,
+      "wrapT": 10497
+    }
+  ],
+  "textures": [
+    {
+      "source": 1,
+      "sampler": 0
+    },
+    {
+      "source": 0,
+      "sampler": 0
+    },
+    {
+      "source": 2,
+      "sampler": 0
+    }
+  ],
+  "images": [
+    {
+      "name": "painted_wooden_bench_nor_gl",
+      "mimeType": "image/jpeg",
+      "uri": "textures/painted_wooden_bench_nor_gl_1k.jpg"
+    },
+    {
+      "name": "painted_wooden_bench_diff",
+      "mimeType": "image/jpeg",
+      "uri": "textures/painted_wooden_bench_diff_1k.jpg"
+    },
+    {
+      "name": "painted_wooden_bench_rough",
+      "mimeType": "image/jpeg",
+      "uri": "textures/painted_wooden_bench_arm_1k.jpg"
+    }
+  ],
+  "buffers": [
+    {
+      "uri": "painted_wooden_bench_opt.bin",
+      "byteLength": 20984
+    }
+  ],
+  "materials": [
+    {
+      "name": "painted_wooden_bench",
+      "doubleSided": true,
+      "pbrMetallicRoughness": {
+        "metallicFactor": 0,
+        "baseColorTexture": {
+          "index": 0
+        },
+        "metallicRoughnessTexture": {
+          "index": 2
+        }
+      },
+      "normalTexture": {
+        "index": 1
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "bench.002",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 1,
+            "NORMAL": 2,
+            "TEXCOORD_0": 3
+          },
+          "mode": 4,
+          "material": 0,
+          "indices": 0
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "painted_wooden_bench",
+      "mesh": 0
+    }
+  ],
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "scene": 0
+}

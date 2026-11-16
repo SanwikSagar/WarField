@@ -37,7 +37,8 @@ export function buildSceneryLOD(ctx, excluded = []) {
                 let low = reduced.get(source.geometry);
                 if (!low) {
                     const vertices = source.geometry.attributes.position.count;
-                    if (vertices > 150 && vertices < 1600 && materials.length === 1 && !Object.keys(source.geometry.morphAttributes).length) {
+                    // props are pre-reduced offline (tools/simplify-props.mjs): only meshes still dense enough to matter get a load-time reduced tier
+                    if (vertices > 800 && vertices < 1600 && materials.length === 1 && !Object.keys(source.geometry.morphAttributes).length) {
                         low = modifier.modify(source.geometry, Math.floor(vertices * 0.45));
                         low.computeBoundingSphere();
                         owned.push(low);
@@ -50,7 +51,12 @@ export function buildSceneryLOD(ctx, excluded = []) {
                     resolution: Math.min(detail.impostorResolution ?? 128, detail.fieldMul >= 1 ? 128 : 64), preserveViews: true
                 }) : null;
                 if (impostor) owned.push(impostor);
-                variants.push([highParts, lowParts, impostor?.medium ?? lowParts, impostor?.far ?? lowParts]);
+                // dense scans (too big to simplify at load) would stay at full detail in the 'reduced' tier;
+                // hand them to their baked impostor card right after the close-up range instead
+                const heavy = low === source.geometry && source.geometry.attributes.position.count >= 1600 && impostor;
+                variants.push(heavy
+                    ? [highParts, impostor.medium, impostor.medium, impostor.far]
+                    : [highParts, lowParts, impostor?.medium ?? lowParts, impostor?.far ?? lowParts]);
                 definitions.push({ casts: source.castShadow });
             }
             center.copy(source.geometry.boundingBox.getCenter(new THREE.Vector3())).applyMatrix4(matrix);
@@ -67,8 +73,8 @@ export function buildSceneryLOD(ctx, excluded = []) {
     });
     inst.buckets.forEach((lods, variant) => {
         if (!definitions[variant].casts) for (const bucket of lods) {
-            bucket.meshes.forEach(mesh => { mesh.castShadow = false; });
-            bucket.shadow?.meshes.forEach(mesh => { mesh.castShadow = false; });
+            bucket.meshes.forEach(mesh => { mesh.castShadow = false; mesh.userData.castsBaked = false; });
+            bucket.shadow?.meshes.forEach(mesh => { mesh.castShadow = false; mesh.userData.castsBaked = false; });
         }
     });
     return {

@@ -1,0 +1,161 @@
+/* Minimap, touch controls, scope polish and mobile layout (loaded after the base styles). */
+
+/* ── minimap ─────────────────────────────────────────────── */
+#minimap {
+    position: absolute; top: 18px; right: 18px; width: 168px; height: 168px;
+    border-radius: 50%; overflow: visible; pointer-events: auto; cursor: pointer;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+#minimap canvas { width: 100%; height: 100%; border-radius: 50%; display: block; }
+#minimap .mm-n {
+    position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px;
+    font: 700 10px/16px 'Rajdhani', 'Barlow Condensed', sans-serif; color: #f2c14e; text-align: center;
+    text-shadow: 0 1px 2px #000; pointer-events: none;
+}
+#minimap .mm-dist {
+    position: absolute; left: 0; right: 0; bottom: -18px; text-align: center; pointer-events: none;
+    font: 600 11px 'Rajdhani', 'Barlow Condensed', sans-serif; letter-spacing: 0.12em; color: #f2c14e;
+    text-shadow: 0 1px 2px #000;
+}
+/* the compass / intel block moves left of the map */
+#hud .hud-top-right { right: 206px; }
+
+/* ── touch controls ──────────────────────────────────────── */
+#touch-ui { position: fixed; inset: 0; z-index: 40; pointer-events: none; display: none; touch-action: none; user-select: none; -webkit-user-select: none; }
+body.touch.in-game #touch-ui { display: block; }
+#touch-ui .t-look { position: absolute; top: 0; right: 0; bottom: 0; left: 40%; pointer-events: auto; }
+#touch-ui .t-stick {
+    position: absolute; left: 0; bottom: 0; width: 40%; height: 70%; pointer-events: auto;
+}
+#touch-ui .t-base, #touch-ui .t-knob {
+    position: absolute; border-radius: 50%; pointer-events: none; opacity: 0; transition: opacity 0.15s;
+}
+#touch-ui .t-base { width: 128px; height: 128px; margin: -64px 0 0 -64px; border: 2px solid rgba(255, 255, 255, 0.28); background: rgba(10, 12, 12, 0.22); }
+#touch-ui .t-knob { width: 56px; height: 56px; margin: -28px 0 0 -28px; background: rgba(255, 255, 255, 0.35); box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.25); }
+#touch-ui.stick-on .t-base, #touch-ui.stick-on .t-knob { opacity: 1; }
+#touch-ui .t-btn {
+    position: absolute; pointer-events: auto; border-radius: 50%;
+    width: 62px; height: 62px; display: flex; align-items: center; justify-content: center;
+    font: 700 12px 'Rajdhani', 'Barlow Condensed', sans-serif; letter-spacing: 0.08em; color: rgba(255, 255, 255, 0.9);
+    background: rgba(12, 14, 14, 0.42); border: 2px solid rgba(255, 255, 255, 0.28);
+    backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+}
+#touch-ui .t-btn.on, #touch-ui .t-btn:active { background: rgba(214, 170, 90, 0.55); border-color: rgba(255, 220, 150, 0.8); }
+#touch-ui .t-fire { width: 88px; height: 88px; right: 28px; bottom: 120px; font-size: 14px; background: rgba(150, 30, 24, 0.5); border-color: rgba(255, 140, 120, 0.55); }
+#touch-ui .t-fire2 { width: 60px; height: 60px; left: 18px; top: 46%; background: rgba(150, 30, 24, 0.42); border-color: rgba(255, 140, 120, 0.45); }
+#touch-ui .t-ads { right: 128px; bottom: 150px; }
+#touch-ui .t-jump { right: 34px; bottom: 30px; }
+#touch-ui .t-crouch { right: 110px; bottom: 44px; }
+#touch-ui .t-reload { right: 190px; bottom: 70px; }
+#touch-ui .t-swap { right: 200px; bottom: 150px; width: 52px; height: 52px; font-size: 11px; }
+#touch-ui .t-use { right: 120px; bottom: 236px; width: 52px; height: 52px; font-size: 11px; display: none; }
+#touch-ui.can-use .t-use { display: flex; }
+#touch-ui .t-pause { top: 10px; right: 138px; width: 40px; height: 40px; font-size: 14px; }
+#touch-ui .t-sprint { left: 18px; bottom: 16px; width: 50px; height: 50px; font-size: 10px; }
+
+/* ── mobile HUD layout ───────────────────────────────────── */
+body.touch #minimap { width: 118px; height: 118px; top: 10px; right: 10px; }
+body.touch #hud .hud-top-right { right: 190px; top: 12px; }
+body.touch #hud .hud-bottom-right { top: 150px; bottom: auto; right: 14px; transform: scale(0.62); transform-origin: right top; }
+body.touch #hud .hud-bottom-left { transform: scale(0.8); transform-origin: left top; top: 12px; bottom: auto; left: 12px; }
+body.touch #hud .hud-top-left { top: 76px; left: 12px; transform: scale(0.7); transform-origin: left top; }
+body.touch #obj-list { display: none; }
+body.touch .dlg { left: 82px; right: auto; bottom: 10px; transform: none !important; max-width: 52vw; font-size: 0.85em; }
+body.touch .dlg.cine { left: 50%; transform: translate(-50%, 0) !important; max-width: 80vw; }
+body.touch #squad-status, body.touch #interaction-prompt kbd { display: none; }
+body.touch #subtitle-box { bottom: 24px; max-width: 52vw; font-size: 13px; }
+/* short landscape phones: tighter button cluster */
+@media (max-height: 430px) {
+    #touch-ui .t-fire { width: 76px; height: 76px; right: 22px; bottom: 96px; }
+    #touch-ui .t-btn { width: 52px; height: 52px; font-size: 10px; }
+    #touch-ui .t-ads { right: 108px; bottom: 128px; }
+    #touch-ui .t-jump { right: 24px; bottom: 18px; }
+    #touch-ui .t-crouch { right: 88px; bottom: 26px; }
+    #touch-ui .t-reload { right: 152px; bottom: 50px; }
+    #touch-ui .t-swap { right: 170px; bottom: 116px; width: 46px; height: 46px; }
+    #touch-ui .t-use { right: 104px; bottom: 196px; }
+}
+
+/* ── scope: lens vignette + subtle edge chroma, breath hint ───── */
+#scope-hint {
+    position: fixed; left: 50%; bottom: 18%; transform: translateX(-50%); z-index: 30; pointer-events: none;
+    font: 600 12px 'Rajdhani', 'Barlow Condensed', sans-serif; letter-spacing: 0.2em; color: rgba(240, 236, 226, 0.75);
+    text-shadow: 0 1px 3px #000; opacity: 0; transition: opacity 0.25s;
+}
+body.scoped #scope-hint { opacity: 1; }
+body.touch #scope-hint { display: none; }
+
+/* ── pause / fullscreen extras ───────────────────────────── */
+#pause-menu .pause-hint { margin-top: 14px; font: 500 12px 'Rajdhani', sans-serif; letter-spacing: 0.14em; color: rgba(232, 226, 210, 0.55); }
+
+/* ── menus on short / touch screens ─────────────────────── */
+body.touch .hint-bar, body.touch .hint, body.touch .k-kbm, body.touch .k-pad { display: none !important; }
+@media (max-height: 520px) {
+    .menu-content { padding-top: 14px !important; padding-bottom: 10px !important; }
+    .title-block { margin-bottom: 6px !important; }
+    .title-main { font-size: clamp(26px, 8vh, 44px) !important; line-height: 1 !important; }
+    .title-sub { margin-top: 2px !important; }
+    .menu-nav { gap: 0 !important; }
+    .menu-nav .menu-item { padding-top: 4px !important; padding-bottom: 4px !important; min-height: 0 !important; height: auto !important; }
+    .menu-item .mi-label { font-size: 16px !important; }
+    .menu-item .mi-sub, .menu-item small { font-size: 10px !important; }
+    #pause-menu .pause-panel { padding: 14px 22px !important; max-height: 96vh; overflow-y: auto; }
+    #pause-menu .pause-title { font-size: 28px !important; margin-bottom: 2px !important; }
+    #pause-menu .pause-stats { display: none; }
+    .complete-card { transform: scale(0.82); transform-origin: center; }
+}
+
+/* ── main menu: option description + intel feed ticker ───── */
+#main-menu .menu-desc {
+    margin-top: 18px; max-width: 360px; min-height: 2.6em;
+    font: 500 13px/1.45 'Rajdhani', 'Barlow Condensed', sans-serif; letter-spacing: 0.04em; color: rgba(232, 226, 210, 0.62);
+    border-left: 2px solid rgba(238, 138, 43, 0.55); padding-left: 12px;
+}
+#main-menu .menu-desc.in { animation: descIn 0.35s cubic-bezier(.16, 1, .3, 1) both; }
+@keyframes descIn { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: none; } }
+#main-menu .menu-ticker {
+    position: absolute; left: 0; right: 0; bottom: 46px; height: 26px; display: flex; align-items: center; gap: 14px;
+    padding: 0 var(--rail, 48px); pointer-events: none; overflow: hidden;
+    background: linear-gradient(90deg, rgba(0,0,0,0) 0, rgba(8,10,12,0.55) 12%, rgba(8,10,12,0.55) 88%, rgba(0,0,0,0) 100%);
+    border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+#main-menu .mt-label {
+    flex: none; font: 700 10px 'Rajdhani', sans-serif; letter-spacing: 0.24em; color: #0b0c0d; background: #ee8a2b; padding: 3px 8px;
+}
+#main-menu .mt-track { flex: 1; overflow: hidden; mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent); }
+#main-menu .mt-run { display: inline-flex; white-space: nowrap; animation: tick 70s linear infinite; }
+#main-menu .mt-item { font: 600 12px 'Rajdhani', sans-serif; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(232, 226, 210, 0.7); padding-right: 54px; }
+#main-menu .mt-item::before { content: '■'; color: #ee8a2b; font-size: 7px; margin-right: 12px; vertical-align: 2px; }
+@keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (max-height: 520px), (max-width: 760px) { #main-menu .menu-ticker, #main-menu .menu-desc { display: none; } }
+@media (prefers-reduced-motion: reduce) { #main-menu .mt-run { animation: none; } }
+
+/* ── settings → profile (player ID, cloud save) ──────────── */
+.pf-card { display: flex; flex-direction: column; gap: 16px; padding: 4px 2px 8px; }
+.pf-id { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 18px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-left: 3px solid #ee8a2b; }
+.pf-k { font: 700 10px 'Rajdhani', sans-serif; letter-spacing: 0.22em; color: rgba(232, 226, 210, 0.5); margin-bottom: 4px; }
+.pf-v { font: 700 28px 'Rajdhani', sans-serif; letter-spacing: 0.14em; color: #f3eee2; user-select: all; }
+.pf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px 22px; }
+.pf-s { font: 600 15px 'Rajdhani', sans-serif; letter-spacing: 0.04em; color: rgba(243, 238, 226, 0.9); }
+.pf-pill { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; background: #7a7d7a; vertical-align: 1px; }
+.pf-pill.synced { background: #5fd27a; box-shadow: 0 0 8px rgba(95,210,122,0.7); }
+.pf-pill.syncing, .pf-pill.connecting { background: #f2c14e; animation: pfPulse 1s ease-in-out infinite; }
+.pf-pill.offline { background: #8a8f95; }
+.pf-pill.error { background: #ff4b3e; }
+@keyframes pfPulse { 50% { opacity: 0.35; } }
+.pf-note { margin: 0; font: 500 13px/1.5 'Rajdhani', sans-serif; letter-spacing: 0.03em; color: rgba(232, 226, 210, 0.58); }
+.pf-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.pf-btn {
+    padding: 9px 16px; font: 700 12px 'Rajdhani', sans-serif; letter-spacing: 0.16em; text-transform: uppercase; cursor: pointer;
+    color: #e8e2d2; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.16); transition: background .15s, border-color .15s, color .15s;
+}
+.pf-btn:hover, .pf-btn:focus-visible { background: rgba(238,138,43,0.16); border-color: rgba(238,138,43,0.7); color: #fff; outline: none; }
+.pf-btn.primary { background: #ee8a2b; border-color: #ee8a2b; color: #14100a; }
+.pf-btn.primary:hover, .pf-btn.primary:focus-visible { background: #ffa347; color: #14100a; }
+.pf-btn.danger:hover, .pf-btn.danger:focus-visible { background: rgba(255,75,62,0.16); border-color: rgba(255,75,62,0.7); }
+.pf-msg { margin: 0; min-height: 1.3em; font: 600 13px 'Rajdhani', sans-serif; letter-spacing: 0.06em; color: #f2c14e; }
+.footer-player { margin-right: 18px; letter-spacing: 0.14em; }
+.footer-player .fp-synced { color: #5fd27a; }
+.footer-player .fp-error { color: #ff4b3e; }
+.footer-player .fp-syncing, .footer-player .fp-connecting { color: #f2c14e; }
+@media (max-width: 760px) { .pf-v { font-size: 22px; } .pf-id { flex-wrap: wrap; } }

@@ -1,6 +1,8 @@
 import * as THREE from '/node_modules/three/build/three.module.js';
 import { makeGLTFLoader } from './AssetLoaders.js';
 import { TextureFactory } from '../utils/TextureFactory.js';
+import { mergeByMaterial } from '../render/MeshMerge.js';
+import { lodManifest } from './LodManifest.js';
 
 /**
  * CC0 scanned props from Poly Haven (KTX2 + Draco GLBs in /assets/models/props),
@@ -40,8 +42,10 @@ export function loadPropModels(config = null) {
     return Promise.all([...ids].map(id => {
         if (T[id]) return Promise.resolve(T[id]);
         if (loading.has(id)) return loading.get(id);
-        // compressed GLB first, else the raw Poly Haven 1k glTF (tools/fetch-polyhaven-models.mjs)
-        const promise = L.loadAsync(`/assets/models/props/${id}.glb`)
+        // offline-reduced file first (lod-manifest.json), else the compressed GLB, else the raw Poly Haven 1k glTF
+        const promise = lodManifest()
+            .then(lod => (lod.props[id] ? L.loadAsync(lod.props[id]) : Promise.reject()))
+            .catch(() => L.loadAsync(`/assets/models/props/${id}.glb`))
             .catch(() => L.loadAsync(`/assets/models/props/${id}/${id}_1k.gltf`)).then(g => {
         g.scene.traverse(o => {
             if (!o.isMesh) return;
@@ -54,7 +58,7 @@ export function loadPropModels(config = null) {
                 if (o.material.map) { o.material.alphaTest = 0.4; o.material.alphaToCoverage = true; o.material.transparent = false; }
             }
         });
-        T[id] = g.scene;
+        T[id] = FOLIAGE.has(id) ? g.scene : mergeByMaterial(g.scene);   // static batching: one mesh per material
         return g.scene;
         }, () => null).finally(() => loading.delete(id));
         loading.set(id, promise);

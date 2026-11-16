@@ -90,6 +90,7 @@ export class InputManager {
     }
 
     requestLock() {
+        if (this.touchOnly) return;                 // phones / tablets: touch controls, no pointer lock
         if (!this.isLocked && this.canvas.requestPointerLock) {
             this.canvas.requestPointerLock();
         }
@@ -118,10 +119,10 @@ export class InputManager {
     }
 
     consumeMouseMovement() {
-        const m = {
-            x: this.mouseMovement.x * this.sensitivity,
-            y: this.mouseMovement.y * this.sensitivity * (this.invertY ? -1 : 1)
-        };
+        const m = this._mm || (this._mm = { x: 0, y: 0 });     // reused: no garbage per frame
+        const a = this.assistScale ?? 1;            // aim assist: look slows while the crosshair is on a target
+        m.x = this.mouseMovement.x * this.sensitivity * a;
+        m.y = this.mouseMovement.y * this.sensitivity * a * (this.invertY ? -1 : 1);
         this.mouseMovement.x = 0;
         this.mouseMovement.y = 0;
         return m;
@@ -131,8 +132,11 @@ export class InputManager {
 
     /** Call at the very end of each frame to latch edge states. */
     endFrame() {
-        this.prevKeys = { ...this.keys };
-        this.prevMouseButtons = { ...this.mouseButtons };
+        // copy into the existing objects instead of allocating new ones every frame
+        const pk = this.prevKeys, k = this.keys;
+        for (const c in k) pk[c] = k[c];
+        const pm = this.prevMouseButtons, m = this.mouseButtons;
+        pm.left = m.left; pm.right = m.right; pm.middle = m.middle;
     }
 
     rebind(action, keyCode) {

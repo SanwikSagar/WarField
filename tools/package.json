@@ -1,0 +1,9 @@
+{
+  "name": "warfield-tools",
+  "private": true,
+  "description": "Offline asset processing (not shipped with the game)",
+  "type": "module",
+  "devDependencies": {
+    "@gltf-transform/cli": "^4.5.1"
+  }
+}

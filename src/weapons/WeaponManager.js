@@ -1,4 +1,5 @@
 import * as THREE from '/node_modules/three/build/three.module.js';
+import { disposeSkeletons } from '../core/CharacterFactory.js';
 import { Weapon } from './Weapon.js';
 import { WEAPON_DATA, DEFAULT_LOADOUT } from './WeaponData.js';
 import { WeaponEffects } from './WeaponEffects.js';
@@ -15,6 +16,35 @@ import { FPArms } from './FPArms.js';
  *
  * deps: { cameraManager, audio, getRaycastables(), getEnemies(), onEnemyHit() }
  */
+/**
+ * Scope / LPVO optic overlay: soft lens edge with a faint colour fringe, a ring that drifts
+ * against the reticle (scope shadow), and a crisp SVG reticle that scales with the screen.
+ *   scope: mil-dot crosshair with thick outer posts and holdover ticks
+ *   lpvo:  illuminated dot inside a horseshoe, fine crosshair
+ */
+function scopeMarkup(type) {
+    const R = type === 'scope' ? 40 : 43;                     // lens radius in vmin
+    const dots = type === 'scope'
+        ? [-8, -6, -4, -2, 2, 4, 6, 8].map(i => '<circle cx="' + i * 6 + '" cy="0" r="0.9"/><circle cx="0" cy="' + i * 6 + '" r="0.9"/>').join('')
+          + [1, 2, 3, 4].map(i => '<line x1="' + (-(5 - i * 0.4)) + '" y1="' + i * 10 + '" x2="' + (5 - i * 0.4) + '" y2="' + i * 10 + '" stroke-width="0.5"/>').join('')
+        : '';
+    const centre = type === 'scope'
+        ? '<line x1="-60" y1="0" x2="60" y2="0" stroke-width="0.35"/><line x1="0" y1="-60" x2="0" y2="60" stroke-width="0.35"/>'
+        : '<line x1="-100" y1="0" x2="-14" y2="0" stroke-width="0.45"/><line x1="14" y1="0" x2="100" y2="0" stroke-width="0.45"/><line x1="0" y1="14" x2="0" y2="100" stroke-width="0.45"/>'
+          + '<path d="M -9 4 A 10 10 0 1 1 9 4" fill="none" stroke="#ff3a22" stroke-width="0.9" style="filter:drop-shadow(0 0 1.5px rgba(255,60,30,.9))"/>'
+          + '<circle cx="0" cy="0" r="1.1" fill="#ff3a22" stroke="none" style="filter:drop-shadow(0 0 1.5px rgba(255,60,30,1))"/>';
+    const posts = '<rect x="-100" y="-1.4" width="48" height="2.8"/><rect x="52" y="-1.4" width="48" height="2.8"/><rect x="-1.4" y="52" width="2.8" height="48"/>';
+    const lens = 'position:absolute;left:50%;top:50%;width:' + 2 * R + 'vmin;height:' + 2 * R + 'vmin;transform:translate(-50%,-50%);border-radius:50%;';
+    return ''
+        + '<div class="sc-ring" style="position:absolute;inset:-6vmin;will-change:transform">'
+        + '<div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 50%, rgba(0,0,0,0) ' + (R - 2) + 'vmin, rgba(0,0,0,.6) ' + R + 'vmin, #030303 ' + (R + 2.5) + 'vmin)"></div>'
+        + '<div style="' + lens + 'box-shadow:inset 0 0 7vmin rgba(0,0,0,.7), inset 0.5vmin 0 1.2vmin rgba(255,80,40,.10), inset -0.5vmin 0 1.2vmin rgba(40,120,255,.10)"></div>'
+        + '</div>'
+        + '<svg viewBox="-100 -100 200 200" preserveAspectRatio="xMidYMid meet" style="' + lens.replace('border-radius:50%;', '') + '" fill="#0b0b0b" stroke="#0b0b0b">'
+        + (type === 'scope' ? posts : '') + centre + dots + '</svg>'
+        + '<div style="' + lens + 'background:radial-gradient(circle at 38% 32%, rgba(180,210,255,.07), rgba(0,0,0,0) 45%)"></div>';
+}
+
 export class WeaponManager {
     constructor(camera, scene, deps = {}) {
         this.camera = camera;
@@ -692,7 +722,7 @@ export class WeaponManager {
             if (/emission|tritium/i.test(m.name)) { m.emissive = new THREE.Color(m.color || 0xff2020); m.emissiveIntensity = 1.5; }
             if (/reticle/i.test(m.name)) { m.transparent = true; m.alphaTest = 0.3; m.depthWrite = false; }
             // polymer/cerakote is satin, not glossy; keep reflections subtle so the gun sits in the scene's light
-            if (m.envMapIntensity !== undefined && !m.transparent) {
+            if (m.envMapIntensity !== undefined && !m.transparent && !m.userData.gunFinish) {
                 m.envMapIntensity = m.metalness > 0.3 ? 1.0 : 0.7;
                 if (m.metalness <= 0.3) m.roughness = Math.max(m.roughness ?? 0.6, 0.62);
             }
@@ -751,7 +781,10 @@ export class WeaponManager {
         // looking through an optic: hide its body, show the scope / red-dot overlay
         const scoped = !!w.optic && weapon.ads > 0.86 && p < 0;
         w.opticNodes.forEach(n => { n.visible = !scoped; });
+        // magnified optics: the gun itself would fill the lens, so the whole viewmodel steps aside (red dots keep it)
+        w.root.visible = !(scoped && w.optic !== 'dot');
         this._setScopeOverlay(scoped ? w.optic : null);
+        if (scoped && this.lookSource) this.updateScopeSway(dt, this.lookSource.lastLook);
         if (this.arms) this.arms.setVisible(!scoped);
 
         if (!this.arms) return;
@@ -818,7 +851,15 @@ export class WeaponManager {
             el.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:4;display:none;';
             document.body.appendChild(el);
         }
-        if (!type) { el.style.display = 'none'; globalEvents.emit('spread_update', { spread: 8, hidden: false }); return; }
+        if (!type) { el.style.display = 'none'; document.body.classList.remove('scoped'); globalEvents.emit('spread_update', { spread: 8, hidden: false }); return; }
+        if (type !== 'dot') {
+            if (this._scopeBuilt !== type) { el.innerHTML = scopeMarkup(type); this._scopeBuilt = type; }
+            el.style.display = 'block';
+            document.body.classList.add('scoped');
+            globalEvents.emit('spread_update', { spread: 8, hidden: true });
+            return;
+        }
+        this._scopeBuilt = 'dot';
         const line = (css) => `<div style="position:absolute;background:rgba(10,10,10,.92);${css}"></div>`;
         if (type === 'dot') {
             el.innerHTML = '<div style="position:absolute;left:50%;top:50%;width:7px;height:7px;margin:-3.5px;border-radius:50%;background:#ff3020;box-shadow:0 0 6px 2px rgba(255,40,20,.8)"></div>'
@@ -839,6 +880,20 @@ export class WeaponManager {
         }
         el.style.display = 'block';
         globalEvents.emit('spread_update', { spread: 8, hidden: true });
+    }
+
+    /** scope shadow: the lens ring drifts against the reticle as the gun sways (per frame while scoped) */
+    updateScopeSway(dt, look) {
+        if (!this._scopeType || this._scopeType === 'dot') return;
+        const ring = document.querySelector('#scope-overlay .sc-ring');
+        if (!ring) return;
+        const s = this._sway || (this._sway = { x: 0, y: 0, t: 0 });
+        s.t += dt;
+        const tx = THREE.MathUtils.clamp(-(look ? look.x : 0) * 900, -3.5, 3.5) + Math.sin(s.t * 0.9) * 0.35;
+        const ty = THREE.MathUtils.clamp(-(look ? look.y : 0) * 900, -3.5, 3.5) + Math.sin(s.t * 1.3 + 1) * 0.3;
+        const k = Math.min(1, dt * 7);
+        s.x += (tx - s.x) * k; s.y += (ty - s.y) * k;
+        ring.style.transform = 'translate(' + s.x.toFixed(2) + 'vmin, ' + s.y.toFixed(2) + 'vmin)';
     }
 
     setBaseFOV(fov) { this.baseFov = fov; }
@@ -868,7 +923,7 @@ export class WeaponManager {
         this.effects.clear();
         this.clearLoadout();
         this.camera.remove(this.rig);
-        if (this.arms) this.camera.remove(this.arms.root);
+        if (this.arms) { this.camera.remove(this.arms.root); if (this.arms.root) disposeSkeletons(this.arms.root); }
     }
 }
 

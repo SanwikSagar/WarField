@@ -1,0 +1,155 @@
+{
+  "asset": {
+    "generator": "glTF-Transform v4.5.1",
+    "version": "2.0"
+  },
+  "accessors": [
+    {
+      "type": "SCALAR",
+      "componentType": 5123,
+      "count": 1500,
+      "bufferView": 0,
+      "byteOffset": 0
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 486,
+      "max": [
+        0.31697168946266174,
+        0.9304735064506531,
+        0.3193000555038452
+      ],
+      "min": [
+        -0.3142671585083008,
+        -1.1793932941372987e-7,
+        -0.31929945945739746
+      ],
+      "bufferView": 1,
+      "byteOffset": 0
+    },
+    {
+      "type": "VEC3",
+      "componentType": 5126,
+      "count": 486,
+      "bufferView": 1,
+      "byteOffset": 12
+    },
+    {
+      "type": "VEC2",
+      "componentType": 5126,
+      "count": 486,
+      "bufferView": 1,
+      "byteOffset": 24
+    }
+  ],
+  "bufferViews": [
+    {
+      "buffer": 0,
+      "byteOffset": 0,
+      "byteLength": 3000,
+      "target": 34963
+    },
+    {
+      "buffer": 0,
+      "byteOffset": 3000,
+      "byteLength": 15552,
+      "byteStride": 32,
+      "target": 34962
+    }
+  ],
+  "samplers": [
+    {
+      "magFilter": 9729,
+      "minFilter": 9987,
+      "wrapS": 10497,
+      "wrapT": 10497
+    }
+  ],
+  "textures": [
+    {
+      "source": 1,
+      "sampler": 0
+    },
+    {
+      "source": 0,
+      "sampler": 0
+    },
+    {
+      "source": 2,
+      "sampler": 0
+    }
+  ],
+  "images": [
+    {
+      "name": "barrel_03_nor_gl",
+      "mimeType": "image/jpeg",
+      "uri": "textures/barrel_03_nor_gl_1k.jpg"
+    },
+    {
+      "name": "barrel_03_diff",
+      "mimeType": "image/jpeg",
+      "uri": "textures/barrel_03_diff_1k.jpg"
+    },
+    {
+      "name": "barrel_03_metal-barrel_03_rough",
+      "mimeType": "image/jpeg",
+      "uri": "textures/barrel_03_arm_1k.jpg"
+    }
+  ],
+  "buffers": [
+    {
+      "uri": "barrel_03_opt.bin",
+      "byteLength": 18552
+    }
+  ],
+  "materials": [
+    {
+      "name": "barrel_03",
+      "doubleSided": true,
+      "pbrMetallicRoughness": {
+        "baseColorTexture": {
+          "index": 0
+        },
+        "metallicRoughnessTexture": {
+          "index": 2
+        }
+      },
+      "normalTexture": {
+        "index": 1
+      }
+    }
+  ],
+  "meshes": [
+    {
+      "name": "Circle.002",
+      "primitives": [
+        {
+          "attributes": {
+            "POSITION": 1,
+            "NORMAL": 2,
+            "TEXCOORD_0": 3
+          },
+          "mode": 4,
+          "material": 0,
+          "indices": 0
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "barrel_03",
+      "mesh": 0
+    }
+  ],
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "scene": 0
+}

@@ -88,7 +88,7 @@ export const WEAPON_DATA = {
         reloadTime: 2.8,
         auto: false,
         adsTime: 0.4,
-        adsFov: 28,
+        adsFov: 20,                 // ~4x with the scope overlay
         spreadHip: 0.06,
         spreadAds: 0.0005,
         recoilPattern: [[0.14, 0.01]],

@@ -5,6 +5,7 @@ import { makeGLTFLoader, loadKTX2 } from './AssetLoaders.js';
 import { mergeGeometries } from '/node_modules/three/examples/jsm/utils/BufferGeometryUtils.js';
 import { bakeImpostor } from './Impostors.js';
 import { relocatePathFoliage } from './PathFoliage.js';
+import { occlusion, viewCone } from '../render/Occlusion.js';
 
 /**
  * Realistic-but-cheap foliage for the web.
@@ -196,6 +197,27 @@ export class InstanceLOD {
      */
     constructor(parent, variants, items, { thresholds, shadowLods = [0], backCull = 8, shadowDistance = 40 }) {
         this.items = items;
+        this.variants = variants;
+        this.shadowLods = shadowLods;
+        InstanceLOD.live.add(this);
+        // world AABB + bounding radius of every item (from its finest tier), for per-instance culling
+        this.box = new Float32Array(items.length * 6); this.rad = new Float32Array(items.length);
+        {
+            const vb = variants.map(lods => {
+                const b = new THREE.Box3();
+                for (const p of lods[0] || []) { if (!p.geometry.boundingBox) p.geometry.computeBoundingBox(); b.union(p.geometry.boundingBox); }
+                return b.isEmpty() ? new THREE.Box3(new THREE.Vector3(-1, 0, -1), new THREE.Vector3(1, 2, 1)) : b;
+            });
+            const m4 = new THREE.Matrix4(), wb = new THREE.Box3();
+            items.forEach((it, i) => {
+                wb.copy(vb[it.variant]).applyMatrix4(m4.fromArray(it.m));
+                const k = i * 6;
+                this.box[k] = wb.min.x; this.box[k + 1] = wb.min.y; this.box[k + 2] = wb.min.z;
+                this.box[k + 3] = wb.max.x; this.box[k + 4] = wb.max.y; this.box[k + 5] = wb.max.z;
+                this.rad[i] = 0.5 * Math.hypot(wb.max.x - wb.min.x, wb.max.y - wb.min.y, wb.max.z - wb.min.z);
+            });
+        }
+        this.culled = 0;
         this.thresholds2 = thresholds.map(t => t * t);
         this.maxD2 = this.thresholds2[this.thresholds2.length - 1];
         this.backCull = backCull;
@@ -219,7 +241,8 @@ export class InstanceLOD {
                         mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
                         mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
                         mesh.castShadow = castShadow;
-                        mesh.receiveShadow = !p.material.userData?.impostor && (castShadow || thresholds[l] <= shadowDistance);
+                        mesh.userData.castsBaked = castShadow;
+                        mesh.receiveShadow = !p.material.userData?.impostor;
                         mesh.userData.environmentManaged = true;
                         mesh.userData.lodTier = p.label ?? p.material.userData?.impostor ?? `geometry-${l}`;
                         if (p.material.userData?.impostorCamera) this.impostorCameras.add(p.material.userData.impostorCamera);
@@ -246,9 +269,13 @@ export class InstanceLOD {
         const th = this.thresholds2, items = this.items, nL = th.length;
         const cx = cam.x, cz = cam.z, dx0 = dir.x, dz0 = dir.z, br = this.backCull;
         if ((cx - this.lastCam.x) ** 2 + (cz - this.lastCam.y) ** 2 < 0.0625 &&
-            (dx0 - this.lastDir.x) ** 2 + (dz0 - this.lastDir.y) ** 2 < 0.0001) return;
+            (dx0 - this.lastDir.x) ** 2 + (dz0 - this.lastDir.y) ** 2 < 0.0001 && this._occReady === occlusion.ready && this._gen === occlusion.gen) return;
         this.lastCam.set(cx, cz);
         this.lastDir.set(dx0, dz0);
+        this._occReady = occlusion.ready; this._gen = occlusion.gen;
+        const dl = Math.hypot(dx0, dz0) || 1, fx = dx0 / dl, fz = dz0 / dl;
+        const cone = viewCone.valid ? viewCone.cosHalf : -2, B = this.box, RAD = this.rad, occ = occlusion.ready ? occlusion : null;
+        let culled = 0;
         for (const bucket of this.activeBuckets) bucket.n = 0;
         for (let i = 0; i < items.length; i++) {
             const it = items[i];
@@ -256,6 +283,13 @@ export class InstanceLOD {
             const d2 = dx * dx + dz * dz;
             if (d2 > this.maxD2) continue;
             if (d2 > Math.max(400, this.shadowDistance2) && dx * dx0 + dz * dz0 < -br) continue;
+            if (d2 > 36) {
+                // frustum (horizontal cone, widened by the item's angular radius) then occlusion
+                const d = Math.sqrt(d2);
+                if ((dx * fx + dz * fz) / d < cone - RAD[i] / d) { culled++; continue; }
+                const k = i * 6;
+                if (occ && d2 > 100 && !occ.test(B[k], B[k + 1], B[k + 2], B[k + 3], B[k + 4], B[k + 5])) { culled++; continue; }
+            }
             let lod = 0;
             while (lod < nL - 1 && d2 > th[lod]) lod++;
             let bucket = this.buckets[it.variant][lod];
@@ -268,6 +302,7 @@ export class InstanceLOD {
                 m.instanceColor.array.set(it.c, idx * 3);
             }
         }
+        this.culled = culled;
         for (const b of this.activeBuckets) {
             for (const m of b.meshes) {
                 m.count = b.n;
@@ -285,10 +320,39 @@ export class InstanceLOD {
         }
     }
 
+    /**
+     * Temporary meshes for the one-time static shadow bake (render/ShadowBake.js): every item of
+     * every casting variant at once, in the finest-but-cheapest geometric tier (never a card).
+     * The caller adds them for one render and then disposes them.
+     */
+    shadowBakeMeshes() {
+        const out = [], per = this.variants.map(() => []);
+        for (const it of this.items) per[it.variant].push(it);
+        this.variants.forEach((lods, v) => {
+            const casts = this.buckets[v].some(b => b.meshes.some(m => m.userData.castsBaked) || (b.shadow && b.shadow.meshes.some(m => m.userData.castsBaked)));
+            if (!casts || !per[v].length) return;
+            const geometric = (l) => lods[l] && lods[l].every(p => !p.material.userData?.impostor);
+            let tier = this.shadowLods.filter(geometric).pop();
+            if (tier === undefined) tier = geometric(0) ? 0 : -1;
+            if (tier < 0) return;
+            for (const p of lods[tier]) {
+                const mesh = new THREE.InstancedMesh(p.geometry, p.material, per[v].length);
+                per[v].forEach((it, i) => mesh.instanceMatrix.array.set(it.m, i * 16));
+                mesh.castShadow = true; mesh.frustumCulled = false;
+                mesh.userData.bakeOwned = true;
+                out.push(mesh);
+            }
+        });
+        return out;
+    }
+
     dispose() {
+        InstanceLOD.live.delete(this);
         this.all.forEach(m => { m.parent && m.parent.remove(m); m.dispose(); });
     }
 }
+/** every live InstanceLOD (for the static shadow bake) */
+InstanceLOD.live = new Set();
 
 const _o = new THREE.Object3D();
 function makeItem(x, y, z, rotY, sx, sy, sz, variant, color) {
@@ -923,4 +987,6 @@ export function registerScatterModel(key, scene) {
     if (!assets.models[key]) assets.models[key] = prepScatterModel(scene.clone(true));
     return true;
 }
-export function updateWindTime(t) { wind.uTime.value = t; }
+// wind animates at 30 Hz: trees and plants sway slowly, so the steps are invisible, and the
+// shared uniform (one per program) is re-uploaded half as often
+export function updateWindTime(t) { wind.uTime.value = Math.floor(t * 30) / 30; }

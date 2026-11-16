@@ -193,17 +193,27 @@ export class Sky {
     update(dt) {
         this.time += dt;
         this.uniforms.uTime.value = this.time;
+        if (this.staticShadows) return;
         this.shadowElapsed += dt;
         if (this.shadowElapsed >= this.shadowInterval) {
             this.shadowElapsed = 0;
             this.sun.shadow.needsUpdate = true;
-            if (this.hasShadowFocus) this.scene.traverseVisible(object => {
-                if (!object.isMesh || object.userData.environmentManaged) return;
-                if (object.userData.shadowSource === undefined) object.userData.shadowSource = object.castShadow;
-                if (!object.userData.shadowSource) return;
-                const matrix = object.matrixWorld.elements;
-                object.castShadow = (matrix[12] - this.shadowFocus.x) ** 2 + (matrix[14] - this.shadowFocus.z) ** 2 < this.shadowDistance ** 2;
-            });
+            if (this.hasShadowFocus) {
+                // the caster list is rebuilt every ~50 shadow refreshes (picks up spawned soldiers), not every refresh
+                if (!this._casters || ++this._castersAge > 50) {
+                    const list = this._casters = []; this._castersAge = 0;
+                    this.scene.traverse(object => {
+                        if (!object.isMesh || object.userData.environmentManaged) return;
+                        if (object.userData.shadowSource === undefined) object.userData.shadowSource = object.castShadow;
+                        if (object.userData.shadowSource) list.push(object);
+                    });
+                }
+                const fx = this.shadowFocus.x, fz = this.shadowFocus.z, r2 = this.shadowDistance * this.shadowDistance;
+                for (let i = 0; i < this._casters.length; i++) {
+                    const object = this._casters[i], m = object.matrixWorld.elements;
+                    object.castShadow = (m[12] - fx) * (m[12] - fx) + (m[14] - fz) * (m[14] - fz) < r2;
+                }
+            }
         }
     }
 
@@ -213,7 +223,7 @@ export class Sky {
         this.shadowFocus.copy(targetPos);
         this.hasShadowFocus = true;
         this.dome.position.copy(targetPos);
-        if (!this.sun.shadow.needsUpdate) return;
+        if (this.staticShadows || !this.sun.shadow.needsUpdate) return;
         const texel = this.palette.shadowSize * 2 / this.sun.shadow.mapSize.x;
         this.sun.target.position.set(Math.round(targetPos.x / texel) * texel, targetPos.y, Math.round(targetPos.z / texel) * texel);
         this.sun.position.copy(this.sun.target.position).add(this.palette.sunPosition);
@@ -221,6 +231,7 @@ export class Sky {
     }
 
     setShadowMapSize(size) {
+        if (this.staticShadows) return;          // baked once at load; Game re-bakes on a quality change
         if (this.sun) {
             this.sun.shadow.mapSize.set(size, size);
             this.sun.shadow.needsUpdate = true;

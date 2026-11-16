@@ -42,6 +42,7 @@ export class SceneManager {
             this.scene.fog = null;
             this.scene.environment = null;
         }
+        delete this.scene.userData.shadowBaked;      // the next level bakes its own static shadows
         this.level = null;
     }
 

@@ -32,7 +32,10 @@ const WANT = {
     wind_gust:       [['wind howl', 'wind blowing', 'strong wind'], 2, 4, 40],
     creak:           [['metal creak', 'rusty metal creak', 'door creak'], 2, 1, 10],
     distant_blast:   [['distant explosion', 'explosion far away', 'artillery distant'], 2, 2, 20],
-    ir_hall:         [['hall impulse response', 'church impulse response', 'room impulse response outdoor', 'stairwell impulse response'], 1, 0.8, 8]
+    fire_loop:       [['fire crackling loop','campfire crackling','fire burning loop'], 2, 6, 90],
+    fire_whoosh:     [['fire whoosh','flame burst','fireball whoosh'], 1, 0.8, 8],
+    debris:          [['rubble falling','debris falling concrete','building collapse debris'], 1, 1.5, 20],
+    metal_clang:     [['metal clang impact','metal debris falling'], 1, 0.5, 6]
 };
 
 const decode = (s) => s.replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#x27;|&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');

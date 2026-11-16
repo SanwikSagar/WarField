@@ -27,6 +27,17 @@ import { loadPropModels } from '../environments/PropModels.js';
 import { BIOMES } from '../environments/biomes.js';
 import { CinematicCamera } from './CinematicCamera.js';
 import { DialogueSystem } from '../story/DialogueSystem.js';
+import { animation } from '../animation/AnimationSystem.js';
+import { bakeStaticShadows } from '../render/ShadowBake.js';
+import { Platform } from './Platform.js';
+import { cloud } from '../save/CloudSave.js';
+import { loadingScreen } from '../ui/LoadingScreen.js';
+import { MiniMap } from '../ui/MiniMap.js';
+import { occlusion, updateViewCone, viewCone } from '../render/Occlusion.js';
+import { loadCivilians, Civilians } from '../ai/Civilians.js';
+import { TouchControls } from '../ui/TouchControls.js';
+import { buildReflectionProbe } from '../render/ReflectionProbe.js';
+import { loadWarModels, warIds, WAR_TEXTURES } from '../environments/WarModels.js';
 import { getScript, SEASON, UPCOMING, formatRelease } from '../story/Story.js';
 
 /** Opening location stamp typed under each episode title. */
@@ -56,6 +67,7 @@ export class Game {
         this.inputManager = new InputManager();
 
         this.audio = audio;
+        this.animation = animation;   // central animation system (also handy from the console)
         this.lastTime = performance.now();
         this.animate = this.animate.bind(this);
 
@@ -72,6 +84,9 @@ export class Game {
     async initialize() {
         saveManager.load();
         this._applySavedSettings();
+        // cloud save: merged progress arrives asynchronously, so refresh whatever shows it
+        globalEvents.on('save_applied', () => { if (this.mainMenu) this.mainMenu.refresh(); });
+        cloud.init().catch(e => console.warn('Cloud save unavailable:', e));      // no-op unless Firebase is configured
 
         this.sceneManager.initialize();
         this.renderer.initialize(this.sceneManager.getScene(), this.cameraManager.getCamera());
@@ -94,6 +109,12 @@ export class Game {
         this.cinematic = new CinematicCamera();
         this.dialogue = new DialogueSystem({ audio: this.audio });
         this.hud = new HUDManager();
+        this.minimap = new MiniMap();
+        this.culling = { occlusion, viewCone };            // debug handle (console / tests)
+        if (Platform.touch) {
+            this.touch = new TouchControls(this.inputManager, { onPause: () => this.pause(), getLookScale: () => saveManager.settings.touchLook ?? 1 });
+            this.inputManager.touchOnly = Platform.mobile;
+        }
         this.settingsMenu = new SettingsMenu({ audio: this.audio });
         this.mainMenu = new MainMenu({
             audio: this.audio,
@@ -105,7 +126,14 @@ export class Game {
             onResume: () => this.resume(),
             onSettings: () => { this.mainMenu.returnTo = 'pause'; this.mainMenu.show('settings'); this.state = STATE.PAUSED; },
             onRestart: () => this.restartCheckpoint(),
-            onAbort: () => this.abortToMenu()
+            onAbort: () => this.abortToMenu(),
+            onFullscreen: () => this.toggleFullscreen()
+        });
+        // pause whenever the game loses the player: tab hidden, window blurred, or mouse released
+        document.addEventListener('visibilitychange', () => { if (document.hidden && this.state === STATE.PLAYING) this.pause(); });
+        window.addEventListener('blur', () => { if (this.state === STATE.PLAYING && !Platform.touch) this.pause(); });
+        document.addEventListener('pointerlockchange', () => {
+            if (!document.pointerLockElement && this.state === STATE.PLAYING && !Platform.touch && performance.now() - (this._resumedAt || 0) > 400) this.pause();
         });
         this.missionComplete = new MissionComplete({
             audio: this.audio,
@@ -145,10 +173,12 @@ export class Game {
         // detected GPU so integrated graphics don't stall during play. Once
         // the player has chosen a preset, we respect their saved choice.
         if (!saveManager.settingsFromStorage) {
-            const tier = detectGPUTier();
+            const tier = Platform.mobile ? 'low' : detectGPUTier();      // phones start on the mobile budget
             s.quality = tier;
             if (tier === 'low') s.filmGrain = 0.0;
         }
+        if (!saveManager.settingsFromStorage) s.fpsCap = s.quality === 'low' || Platform.mobile ? '30' : '60';
+        this.setFrameCap(s.fpsCap);
         this.inputManager.sensitivity = 0.0022 * (s.sensitivity || 1);
         this.inputManager.invertY = !!s.invertY;
         this.cameraManager.shakeIntensity = s.screenShake ?? 1;
@@ -217,10 +247,10 @@ export class Game {
         switch (key) {
             case 'quality':
                 this.renderer.applyQuality(value);
-                if (this.sceneManager.level && this.sceneManager.level.sky) {
-                    const sizes = { low: 1024, medium: 1024, high: 2048, ultra: 4096 };
-                    this.sceneManager.level.sky.setShadowMapSize(sizes[value] || 2048);
-                }
+                if (this.sceneManager.level && this.sceneManager.level.sky) this._bakeShadows(this.sceneManager.level);
+                break;
+            case 'fpsCap':
+                this.setFrameCap(value);
                 break;
             case 'fov':
                 this.cameraManager.baseFOV = value;
@@ -246,7 +276,16 @@ export class Game {
         }
     }
 
+    /** '30' | '60' | 'unlimited'. Drives frame pacing and the adaptive-resolution target. */
+    setFrameCap(cap) {
+        const fps = cap === '30' || cap === 30 ? 30 : cap === 'unlimited' ? 0 : 60;
+        this.frameInterval = fps ? 1000 / fps : 0;
+        this._lastPresent = 0;
+        if (this.renderer) this.renderer.targetFrameMs = this.frameInterval || 1000 / 60;
+    }
+
     _hideLoading() {
+        loadingScreen.progress(1); loadingScreen.hide(400); return;
         const ls = document.getElementById('loading-screen');
         const fill = document.getElementById('loading-fill');
         if (fill) fill.style.width = '100%';
@@ -256,7 +295,19 @@ export class Game {
     }
 
     // ── MISSION LIFECYCLE ───────────────────────────────────────────────
+    /** Fullscreen + landscape lock (needs a user gesture: called from clicks / taps). */
+    toggleFullscreen(force) {
+        const want = force ?? !document.fullscreenElement;
+        try {
+            if (want && !document.fullscreenElement) {
+                const p = document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+                if (p && p.then) p.then(() => { if (Platform.mobile && screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); }).catch(() => {});
+            } else if (!want && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+        } catch (e) { /* not supported (iOS Safari): the game still runs windowed */ }
+    }
+
     startMission(missionId, difficulty, { intro = true } = {}) {
+        if (saveManager.settings.fullscreen ?? Platform.mobile) this.toggleFullscreen(true);     // deploy click is a user gesture
         this.currentDifficulty = difficulty || this.currentDifficulty;
         const mission = MISSIONS.find(m => m.id === missionId) || MISSIONS[0];
         this.pendingMission = mission;
@@ -302,6 +353,10 @@ export class Game {
     }
 
     _showLoadingFor(text) {
+        this._loadingEl = loadingScreen.show(text, { biome: this.pendingMission && this.pendingMission.biome });
+        const fl0 = document.getElementById('loading-fill'); if (fl0) fl0.style.width = '30%';
+        return;
+        // (legacy path below kept unreachable)
         let ls = document.getElementById('loading-screen');
         // a fading overlay is about to be removed by its own timer; never reuse it
         if (ls && ls.classList.contains('fade-out')) { ls.remove(); ls = null; }
@@ -330,9 +385,10 @@ export class Game {
             import('../environments/Foliage.js')
                 .then(({ loadFoliageAssets }) => loadFoliageAssets())
                 .catch(e => { console.warn('Foliage assets unavailable:', e); }),
-            Promise.all([loadCharacters(), loadWeaponModels(), loadPropModels(cfg)])
+            Promise.all([loadCharacters(), loadWeaponModels(), loadPropModels(cfg), loadCivilians()])
                 .catch(e => { console.warn('Characters/weapons unavailable:', e); }),
-            loadPhotoAssets(cfg.photo || [], cfg.hdr && cfg.hdr.file)
+            loadWarModels(warIds(cfg)).catch(e => { console.warn('War models unavailable:', e); }),
+            loadPhotoAssets([...(cfg.photo || []), ...(cfg.war ? WAR_TEXTURES : [])], cfg.hdr && cfg.hdr.file)
                 .catch(e => { console.warn('Photo assets unavailable:', e); })
         ]);
         if (stale()) return;
@@ -344,20 +400,26 @@ export class Game {
         // Build the level
         const level = await this.sceneManager.loadLevel(mission.biome, { ...this.renderer.getSettings(), renderer: this.renderer.renderer });
         if (stale()) return;
-        // Match the sky's shadow-map resolution to the active quality preset
-        // (the Sky builds at 2048 by default; low/medium should be cheaper).
-        if (level.sky) {
-            const shadowSizes = { low: 1024, medium: 1024, high: 2048, ultra: 4096 };
-            level.sky.setShadowMapSize(shadowSizes[this.renderer.quality] || 2048);
-        }
         const fl = document.getElementById('loading-fill');
         if (fl) fl.style.width = '70%';
 
         this.renderer.setExposure(level.exposure || 1.2);
         this.renderer.setGrade(cfg.grade);
+        this.renderer.setSun(level.sky && level.sky.palette ? level.sky.palette.sunPosition : null, (cfg.grade && cfg.grade.shafts) || 0);
 
         // Point the renderer at the gameplay scene
         this.renderer.setScene(this.sceneManager.getScene(), this.cameraManager.getCamera());
+        // Bake the sun shadows once, before any character exists (no real-time shadow pass after this)
+        this._bakeShadows(level);
+        this.minimap.setLevel(level);
+        occlusion.setOccluders(level.colliders);           // buildings / walls hide what is behind them
+        if (level.group) level.group.traverse(o => { if (o.isMesh && o.userData.occludable) occlusion.register(o); });
+
+        // Central animation: fire/smoke/turrets/beacons + every character registers here (before any are created)
+        animation.beginLevel({
+            scene: this.sceneManager.getScene(), level, audio: this.audio, heightAt: level.heightAt,
+            surface: this._surfaceForBiome(mission.biome), lights: this.renderer.quality === 'low' ? 1 : 2
+        });
 
         // Player
         const spawns = level.spawns;
@@ -432,6 +494,10 @@ export class Game {
         this.interactables = [];
         this._spawnIntel(level, mission);
 
+        // Civilians, medics and the dead (after the animation system exists: bodies bake into its corpse batch)
+        try { this.civilians = new Civilians(this.sceneManager.getScene(), level, mission, cfg, () => (this.player ? this.player.getPosition() : new THREE.Vector3())); }
+        catch (e) { console.warn('Civilians failed:', e); this.civilians = null; }
+
         // Mission system
         this.missionManager.startMission(mission.id, level, this.sceneManager.getScene());
 
@@ -449,11 +515,14 @@ export class Game {
         this.hud.setIntel(saveManager.campaign.collectedIntel.length);
 
         if (fl) fl.style.width = '100%';
-        this._warmupShaders(level);
+        await this._warmupShaders(level);
+        if (stale()) return;
+        this._buildProbe();
         this._missionReadyTimer = setTimeout(() => {
             this._missionReadyTimer = null;
             const overlay = this._loadingEl;
-            if (overlay) {
+            if (overlay) { loadingScreen.hide(); this._loadingEl = null; }
+            if (false) {
                 overlay.classList.add('fade-out');
                 setTimeout(() => overlay.remove(), 600);
                 this._loadingEl = null;
@@ -466,15 +535,98 @@ export class Game {
         }, 350);
     }
 
+    /**
+     * Static sun shadows for the whole level: one combined caster mesh, rendered into the shadow map
+     * once (render/ShadowBake.js). Re-run only when the quality preset changes the map size.
+     */
+    _bakeShadows(level) {
+        if (!level || !level.sky || !level.sky.sun) return;
+        const mapSize = { low: 2048, medium: 2048, high: 4096, ultra: 4096, extreme: 4096 }[this.renderer.quality] || 2048;
+        try {
+            level.sky.staticShadows = true;
+            this._shadowBake = bakeStaticShadows(this.renderer.renderer, this.sceneManager.getScene(), this.cameraManager.getCamera(),
+                level.sky.sun, { bounds: level.bounds || 90, mapSize });
+        } catch (e) { console.warn('Shadow bake failed:', e); }
+    }
+
+    /**
+     * Aim assist (setting, on by default): while the crosshair sits on an enemy the look slows down,
+     * and starting to aim down sights eases the view onto the nearest enemy inside a small cone.
+     * Touch play gets a wider cone and stronger pull. Targets must be fighting you or close, which
+     * stands in for line of sight without a raycast.
+     */
+    _aimAssist(dt) {
+        const input = this.inputManager, mv = this.player.movement;
+        input.assistScale = 1;
+        const adsEdge = input.mouseButtons.right && !this._adsWas;      // (input edges are latched before this runs)
+        this._adsWas = input.mouseButtons.right;
+        if (saveManager.settings.aimAssist === false || !this.enemies.length) return;
+        const eye = this.player.getEyePosition();
+        const fx = -Math.sin(mv._lookYaw) * Math.cos(mv._lookPitch), fy = Math.sin(mv._lookPitch), fz = -Math.cos(mv._lookYaw) * Math.cos(mv._lookPitch);
+        const touch = !!this.touch;
+        let best = null, bestCos = Math.cos((touch ? 9 : 5) * Math.PI / 180);
+        for (const e of this.enemies) {
+            if (!e.isAlive || !e.group) continue;
+            const engaged = e.state === 'COMBAT' || e.state === 'FLANKING';
+            const dx = e.group.position.x - eye.x, dy = e.group.position.y + 1.25 - eye.y, dz = e.group.position.z - eye.z;
+            const d = Math.hypot(dx, dy, dz);
+            if (d > 70 || d < 1 || (!engaged && d > 18)) continue;
+            const c = (dx * fx + dy * fy + dz * fz) / d;
+            if (c > bestCos) { bestCos = c; best = { dx, dy, dz, d }; }
+        }
+        if (!best) return;
+        const ang = Math.acos(Math.min(1, bestCos)) * 180 / Math.PI;
+        if (ang < (touch ? 4 : 2.5)) input.assistScale = touch ? 0.45 : 0.6;
+        if (adsEdge) {
+            const as = mv.assist || (mv.assist = { t: 0, yaw: 0, pitch: 0, strength: 1 });
+            as.yaw = Math.atan2(-best.dx, -best.dz);
+            as.pitch = Math.atan2(best.dy, Math.hypot(best.dx, best.dz));
+            as.t = 0.22; as.strength = touch ? 1 : 0.7;
+        }
+    }
+
+    /** Minimap state (reused arrays: no garbage); enemies show once they are fighting you or very close. */
+    _updateMiniMap(dt, playerPos) {
+        const st = this._mm || (this._mm = { pos: null, yaw: 0, squad: [], enemies: [], objective: null, _o: { x: 0, z: 0 } });
+        st.pos = playerPos; st.yaw = this.player.yaw.rotation.y;
+        st.squad.length = 0;
+        for (const m of (this.squad && this.squad.members) || []) if (m.group) st.squad.push({ x: m.group.position.x, z: m.group.position.z, down: (m.health ?? 100) <= 0 });
+        st.enemies.length = 0;
+        for (const e of this.enemies) {
+            if (!e.isAlive || !e.group) continue;
+            const dx = e.group.position.x - playerPos.x, dz = e.group.position.z - playerPos.z;
+            st.enemies.push({ x: e.group.position.x, z: e.group.position.z, spotted: e.state === 'COMBAT' || e.state === 'FLANKING' || dx * dx + dz * dz < 15 * 15 });
+        }
+        const o = this.missionManager.getObjectiveWorldPosition();
+        st.objective = o ? (st._o.x = o.x, st._o.z = o.z, st._o) : null;
+        this.minimap.update(dt, st);
+    }
+
+    /** One-shot cubemap of the finished level for glass / vehicle / wet-ground reflections. */
+    _buildProbe() {
+        if (this._probe) { this._probe.dispose(); this._probe = null; }
+        try {
+            const size = { low: 96, medium: 128, high: 192, ultra: 256, extreme: 256 }[this.renderer.quality] || 128;
+            const hide = animation.fire ? animation.fire.layers.map(l => l.mesh) : [];
+            this._probe = buildReflectionProbe(this.renderer.renderer, this.sceneManager.getScene(), { position: new THREE.Vector3(0, 6, 0), size, hide });
+        } catch (e) { console.warn('Reflection probe failed:', e); }
+    }
+
     /** Render once with every hidden LOD bucket shown (0 instances) so all shader
      *  programs, including shadow depth variants, compile during loading instead of
      *  hitching the first time a tree/plant tier comes into view. */
-    _warmupShaders(level) {
+    /**
+     * Pre-process every shader the level can use while the loading screen is up: all LOD
+     * buckets are briefly made visible and one real render compiles exactly the programs the
+     * level will draw, including the shadow-depth variants. Nothing compiles mid-game, so no first-sight hitches.
+     */
+    async _warmupShaders(level) {
+        const scene = this.sceneManager.getScene();
         const hidden = [];
-        this.sceneManager.getScene().traverse(o => {
-            if (o.isInstancedMesh && !o.visible && o.userData.environmentManaged) { hidden.push(o); o.visible = true; }
+        scene.traverse(o => {
+            if ((o.isInstancedMesh || o.isMesh || o.isPoints) && !o.visible && o.userData.environmentManaged) { hidden.push(o); o.visible = true; }
         });
-        if (level.sky && level.sky.sun) level.sky.sun.shadow.needsUpdate = true;
+        // (compileAsync was measured: it doubled load time and built ~77 variants never drawn, so the warm-up render does it)
         try { this.renderer.render(); } catch (e) { console.warn('Shader warm-up failed:', e); }
         hidden.forEach(o => { o.visible = false; });
     }
@@ -614,6 +766,9 @@ export class Game {
             this.cinematic.stop();
             this.renderer.setScene(this.sceneManager.getScene(), this.cameraManager.getCamera());
         }
+        if (this.civilians) { this.civilians.dispose(); this.civilians = null; }
+        animation.endLevel();
+        if (this._probe) { this._probe.dispose(); this._probe = null; }
         if (this.player) { this.player.weapons.dispose(); this.sceneManager.getScene().remove(this.player.yaw); }
         this.enemies.forEach(e => e.dispose());
         this.enemies = [];
@@ -717,6 +872,7 @@ export class Game {
     }
 
     pause() {
+        if (this.touch) this.touch.reset();
         if (this.state !== STATE.PLAYING) return;
         this.state = STATE.PAUSED;
         this.inputManager.exitLock();
@@ -736,6 +892,7 @@ export class Game {
         this.pauseMenu.hide();
         this.dialogue.setVisible(true);
         this.state = STATE.PLAYING;
+        this._resumedAt = performance.now();
         this.inputManager.requestLock();
         this.inputManager.endFrame();   // latch the Esc that resumed so it doesn't re-trigger pause next frame
         this.resumeMusicCombat();
@@ -762,6 +919,7 @@ export class Game {
         this.renderer.setScene(this.menuThreeScene, this.menuCamera);
         this.renderer.setExposure(this.menuScene.exposure);
         this.renderer.setGrade();
+        this.renderer.setSun(null);
         this.audio.stopAmbience();
         this.audio.startAmbience('rain', 0.12);
         this.audio.startMusic('menu');
@@ -778,9 +936,18 @@ export class Game {
     // ── MAIN LOOP ───────────────────────────────────────────────────────
     animate(currentTime) {
         requestAnimationFrame(this.animate);
-        let dt = (currentTime - this.lastTime) / 1000;
+        // ── frame pacing: present on a steady 30/60 Hz cadence (or every vsync when uncapped) ──
+        const interval = this.frameInterval || 0;
+        if (interval > 0) {
+            const since = currentTime - (this._lastPresent || 0);
+            if (since < interval - 1.5) return;                        // too early for this slot: skip the vsync
+            // advance in whole intervals so the cadence never drifts; resync after a long stall
+            this._lastPresent = since > interval * 4 ? currentTime : this._lastPresent + interval * Math.floor((since + 1.5) / interval);
+        }
+        let frameDt = (currentTime - this.lastTime) / 1000;
         this.lastTime = currentTime;
-        dt = Math.min(dt, 0.05); // cap to avoid physics explosion after stalls
+        frameDt = Math.min(Math.max(frameDt, 0), 0.25);                // a long hitch never turns into a physics explosion
+        const dt = Math.min(frameDt, 0.05);                            // visual systems step at most 50 ms
 
         if (this.state === STATE.MENU || this.state === STATE.BRIEFING) {
             this.menuScene.update(dt, this.menuCamera);
@@ -807,6 +974,7 @@ export class Game {
             if (free) this.enemies.forEach(e => e.update(dt));
             this.squad.update(dt, playerPos);
             if (free) this.missionManager.update(dt, this.player.getEyePosition());
+            updateViewCone(this.cinematic.camera); occlusion.update(dt, this.cinematic.camera);
             this.sceneManager.update(dt, playerPos, this.cinematic.camera);
             this.hud.update(dt);
             if (this._introLines && this.cinematic.mode === 'intro' && this.cinematic.time > 1.8) {
@@ -814,6 +982,8 @@ export class Game {
                 this._introLines = null;
             }
             this.dialogue.update(dt);
+            animation.update(dt, this.cinematic.camera);
+            if (this.civilians) this.civilians.update(dt, this.cinematic.camera);
             const running = this.cinematic.update(dt);
             if (!running || skip || hurt) this._endCinematic();
             this.renderer.render();
@@ -832,17 +1002,37 @@ export class Game {
             }
 
             const playerPos = this.player.getPosition();
-            this.player.update(dt, this.inputManager, this.audio);
-            this.enemies.forEach(e => e.update(dt));
-            this.squad.update(dt, playerPos);
-            this.missionManager.update(dt, this.player.getEyePosition());
+            // ── simulation in fixed-size sub-steps (≤ 1/60 s): identical gameplay speed and physics at
+            //    30, 60 or uncapped. If the frame was slow, several steps run and only one render follows
+            //    (frame skipping); beyond 8 steps the extra time is dropped so a stall can't snowball.
+            {
+                const cam = this.cameraManager.getCamera(), base = this.cameraManager.baseFOV || 75;
+                this.player.movement.zoomScale = Math.min(1, Math.max(0.25, Math.tan(cam.fov * Math.PI / 360) / Math.tan(base * Math.PI / 360)));
+                this.player.weapons.lookSource = this.player.movement;
+            }
+            const steps = Math.min(8, Math.max(1, Math.ceil(frameDt / (1 / 60) - 1e-3)));
+            const sdt = Math.min(frameDt, 8 / 60) / steps;
+            for (let i = 0; i < steps; i++) {
+                this.player.update(sdt, this.inputManager, this.audio);
+                for (let e = 0; e < this.enemies.length; e++) this.enemies[e].update(sdt);
+                this.squad.update(sdt, playerPos);
+                this.missionManager.update(sdt, this.player.getEyePosition());
+                if (this.state !== STATE.PLAYING) break;
+                if (i === 0) this.inputManager.endFrame();           // edge presses (fire, jump, reload) count once per frame
+            }
             if (this.state !== STATE.PLAYING) { this.inputManager.endFrame(); return; }   // mission just completed → outro owns the frame
+            { const cam = this.cameraManager.getCamera(); updateViewCone(cam); occlusion.update(dt, cam); }
             this.sceneManager.update(dt, playerPos, this.cameraManager.getCamera());
 
             // HUD extras
             this.hud.update(dt);
             this.dialogue.update(dt);
+            animation.update(dt, this.cameraManager.getCamera());
+            if (this.civilians) this.civilians.update(dt, this.cameraManager.getCamera());
             this.hud.updateCompass(this.player.yaw.rotation.y);
+            this._updateMiniMap(dt, playerPos);
+            this._aimAssist(dt);
+            if (this.touch) this.touch.update(dt, { canUse: !document.getElementById('interaction-prompt').classList.contains('hidden'), aiming: this.inputManager.mouseButtons.right });
             this._updateCrosshair();
             this._updateSquadStatus();
             this._updateStance();
@@ -850,7 +1040,7 @@ export class Game {
             // Recover damage pulse toward current health
             const hp = this.player.health.healthPct;
             this.renderer.setDamage(this.player.health.isAlive ? Math.max(0, (1 - hp) * 0.5) : 0.9);
-            this.suppression = Math.max(0, (this.suppression || 0) - dt * 0.45);
+            this.suppression = Math.max(0, (this.suppression || 0) - frameDt * 0.45);
             this.player.weapons.suppression = this.suppression;
             this.renderer.setSuppression(Math.min(1, this.suppression));
 

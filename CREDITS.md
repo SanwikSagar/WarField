@@ -103,3 +103,86 @@ https://developer.nvidia.com/gpugems/gpugems/part-i-natural-effects/chapter-7-re
 
 ## Supplied by the project owner
 Character models (HeeroCharecters/), weapon models (weapons/), fern & reed models (Grass/) - check each Sketchfab page for its licence and add author credit if CC-BY.
+
+
+## Vehicles and battlefield props — Poly Pizza, CC0 1.0
+Vehicles, tanks, helicopter, sandbag trenches, watchtowers, tents, barriers, ruins, barrels and similar
+(public/assets/models/war; fetched with tools/fetch-polypizza.mjs, which only downloads models whose licence is CC0).
+
+| File | Title | Author | Source |
+|---|---|---|---|
+| truck.glb | Truck | Quaternius | https://poly.pizza/m/cXw6oiFtZ8 |
+| pickup.glb | Pickup Truck | Quaternius | https://poly.pizza/m/qn4grQgHm8 |
+| pickup_armored.glb | Pickup Truck Armored | Quaternius | https://poly.pizza/m/RUwMItmU4B |
+| suv.glb | SUV | Quaternius | https://poly.pizza/m/xsMtZhBkxL |
+| police.glb | Police Car | Quaternius | https://poly.pizza/m/BwwnUrWGmV |
+| rover.glb | Rover | Quaternius | https://poly.pizza/m/WRd1piJOfh |
+| tank.glb | Tank | Quaternius | https://poly.pizza/m/Dc4k4CooN3 |
+| wagon.glb | Stationwagon | Kay Lousberg | https://poly.pizza/m/vTTTjDoxhV |
+| hatchback.glb | Car Hatchback | Kay Lousberg | https://poly.pizza/m/BG0KAhmGDt |
+| sports.glb | Sports Car | Quaternius | https://poly.pizza/m/1mkmFkAz5v |
+| helicopter.glb | Helicopter | kazuma | https://poly.pizza/m/EQJ2MECUbx |
+| sack_trench.glb | Sack Trench | Quaternius | https://poly.pizza/m/LW3jwpPfiN |
+| sack_trench_small.glb | Sack Trench Small | Quaternius | https://poly.pizza/m/iHyRewQQcN |
+| bags.glb | Bags | Quaternius | https://poly.pizza/m/gzvyAQ797z |
+| watchtower.glb | Watch Tower | Quaternius | https://poly.pizza/m/cMxuj2gt7D |
+| watchtower_small.glb | Watch Tower | Quaternius | https://poly.pizza/m/f2J0aSLVi4 |
+| tent.glb | Tent | Quaternius | https://poly.pizza/m/5Q7qIrfDxA |
+| barracks.glb | Barracks | Quaternius | https://poly.pizza/m/puD1kbV4kf |
+| barricade.glb | Barricade | iPoly3D | https://poly.pizza/m/FKPty4JRap |
+| barrier_large.glb | Barrier Large | Quaternius | https://poly.pizza/m/gLbBiYwt7l |
+| traffic_barrier.glb | Traffic Barrier | Quaternius | https://poly.pizza/m/cM3aJPU9NS |
+| barrier_single.glb | Barrier Single | Quaternius | https://poly.pizza/m/wCUxgt2jSP |
+| debris_pile.glb | Debris Pile | Quaternius | https://poly.pizza/m/WrIiMMxyEP |
+| bricks.glb | Bricks | Quaternius | https://poly.pizza/m/Tvlvh8AAbs |
+| rocks.glb | Rocks | Quaternius | https://poly.pizza/m/gYhoEOKItJ |
+| cannon.glb | Cannon | Quaternius | https://poly.pizza/m/qIAvoaawib |
+| turret_gun.glb | Turret Gun | Quaternius | https://poly.pizza/m/hThPXDCbwl |
+| antenna.glb | Antenna | Quaternius | https://poly.pizza/m/OuHQCigiUR |
+| transmission_tower.glb | Transmission Tower | iPoly3D | https://poly.pizza/m/Xfb0lAPvnh |
+| bonfire.glb | Bonfire | Quaternius | https://poly.pizza/m/Azj9hJwwwG |
+| barrel.glb | Barrel | Quaternius | https://poly.pizza/m/MraIiFnpAY |
+| barrel2.glb | Barrel | Quaternius | https://poly.pizza/m/zjCQP1TAci |
+| exploding_barrel.glb | Exploding Barrel | Quaternius | https://poly.pizza/m/1orHe0kCc1 |
+| propane.glb | Propane Tank | Quaternius | https://poly.pizza/m/3revwBHxDC |
+| pallet_broken.glb | Pallet Broken | Quaternius | https://poly.pizza/m/Gp43iUyyAX |
+| wall_broken.glb | Wall | Quaternius | https://poly.pizza/m/CkF171SeTV |
+| dumpster.glb | Dumpster | Quaternius | https://poly.pizza/m/PKsbolkZSr |
+| trash_container.glb | Trash Container Open | Quaternius | https://poly.pizza/m/IvvdNqXmAW |
+| trashbags.glb | Trash Bags | Quaternius | https://poly.pizza/m/eitNk4I4R1 |
+| traffic_light.glb | Traffic Light | Quaternius | https://poly.pizza/m/apWcPbwhlq |
+| street_light.glb | Street Light | Quaternius | https://poly.pizza/m/nFwrlcLvM5 |
+| tires.glb | Tires | Quaternius | https://poly.pizza/m/mmq7GmG1AK |
+| crate_a.glb | Crate | Quaternius | https://poly.pizza/m/3VGWnZPXmG |
+| crate_b.glb | Crate | Quaternius | https://poly.pizza/m/oTD0P0yGLG |
+| ruins.glb | Modular Ruins Pack | Quaternius | https://poly.pizza/m/F2LAK03B0r |
+| wall_modular.glb | Wall Modular | Quaternius | https://poly.pizza/m/itasw0GWNf |
+
+## Fire / smoke / explosion sprites — OpenGameArt, CC0
+"25 special effects rendered with blender" (volumetric flame, fire+smoke, explosion and shockwave renders; tinyboat on OpenGameArt),
+https://opengameart.org/content/25-special-effects-rendered-with-blender . Packed into sprite atlases in public/assets/vfx
+(the grey smoke atlas is the pack's smoke frames desaturated).
+
+## Scorched ground textures — Poly Haven, CC0
+burned_ground_01, rubble, concrete_debris, road_damaged (1k JPG colour + normal + roughness), used for craters and damaged ground.
+
+## Damage decal atlas — ambientCG + Poly Haven, CC0 1.0
+public/assets/vfx/decals.webp (one 1024x1024 WebP sprite atlas, 16 cells) is composed by tools/atlas-src/build.html from:
+- ambientCG (https://ambientcg.com, CC0 1.0): Leaking004 (wall leak streaks), TireTracks001 (tyre tracks)
+- Poly Haven (CC0): rubble, burned_ground_01, concrete_debris (rubble / soot / dust splats and scorch marks)
+- project-drawn cells released under the same CC0 terms: bullet holes (concrete, metal, wood, dirt), blood, oil, cracks
+
+## Additional sound effects (fire, debris, metal)
+| File | Title | Author | Source |
+|---|---|---|---|
+| fire_loop_0.mp3 | Fireplace | myLoop | https://freesound.org/s/852107/ |
+| fire_loop_1.mp3 | Ambiance_Fire_Bushes_Loop_Stereo.wav | Nox_Sound | https://freesound.org/s/564621/ |
+| fire_whoosh_0.mp3 | Basic Fire Whoosh 2 | LookIMadeAThing | https://freesound.org/s/260555/ |
+| debris_0.mp3 | rockfall2a.wav | AlanCat | https://freesound.org/s/389303/ |
+| metal_clang_0.mp3 | Basic Metal Clang Free | AardsReal | https://freesound.org/s/842171/ |
+
+## Civilians — Poly Pizza, CC0 1.0
+public/assets/models/civilians: "Casual Character" (https://poly.pizza/m/kZ3DmIoGip), "Woman Casual"
+(https://poly.pizza/m/jpKRgGDxhk) and "Man" (https://poly.pizza/m/HMnuH5geEG), all by Quaternius, with their own
+animation clips (idle, walk, run, sitting, wave, interact, death). The ambulance is the CC0 Quaternius "Truck"
+(war/truck.glb) in an ambulance livery.

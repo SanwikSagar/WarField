@@ -276,7 +276,7 @@ export function buildGrassField(ctx, v, circles) {
 
     let disposed = false;
     return {
-        update: (cam) => { shared.uCam.value.copy(cam); shared.uTime.value = performance.now() * 0.001; },
+        update: (cam) => { shared.uCam.value.copy(cam); shared.uTime.value = Math.floor(performance.now() * 0.03) / 30; },   // wind at 30 Hz
         dispose: () => {
             if (disposed) return;
             disposed = true;

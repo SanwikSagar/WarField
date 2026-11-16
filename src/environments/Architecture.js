@@ -27,17 +27,63 @@ export class Deco {
         (this.map.get(mat) || this.map.set(mat, []).get(mat)).push(g);
     }
     box(w, h, d, mat, parent, pos, rot) { this.add(UNIT.box(w, h, d), mat, parent, pos, rot); }
-    flush() {
+    /**
+     * Merge per material AND per 64 m cell: still few draw calls, but each chunk has a tight bounding
+     * volume, so the renderer frustum-culls it and the occlusion culler can hide chunks behind buildings
+     * (a single level-wide mesh per material could never be culled).
+     */
+    flush(cell = 64) {
+        const _b = new THREE.Box3(), _c = new THREE.Vector3();
+        // Materials that differ only in colour (same textures, roughness, shader patch...) are folded into
+        // ONE material each, the colour moving into vertex colours: ~60 deco materials become ~20, and
+        // the chunk draw calls drop with them.
+        const sig = (m) => [m.type, m.map && m.map.uuid, m.normalMap && m.normalMap.uuid, m.roughnessMap && m.roughnessMap.uuid,
+            m.aoMap && m.aoMap.uuid, m.bumpMap && m.bumpMap.uuid, (m.roughness ?? 0).toFixed(2), (m.metalness ?? 0).toFixed(2),
+            m.transparent, m.opacity, m.side, m.emissive ? m.emissive.getHex() : '', m.emissiveIntensity, m.envMapIntensity,
+            m.vertexColors, m.customProgramCacheKey ? m.customProgramCacheKey() : '', JSON.stringify(m.userData || {})].join('|');
+        const families = new Map();
         for (const [mat, list] of this.map) {
-            const merged = mergeGeometries(list, false);
-            list.forEach(g => g.dispose());
-            if (!merged) continue;
-            const mesh = new THREE.Mesh(merged, mat);
-            mesh.castShadow = false; mesh.receiveShadow = true;   // trim is small; skip it in the shadow pass
-            // level-wide batch: keep it out of the per-item scenery LOD (its bbox centre is the map centre)
-            mesh.userData.environmentManaged = true;
-            this.group.add(mesh);
-            this.disposables.push(merged);
+            const k = mat.isMeshStandardMaterial && !mat.vertexColors && mat.color ? sig(mat) : 'solo:' + mat.uuid;
+            (families.get(k) || families.set(k, []).get(k)).push([mat, list]);
+        }
+        const folded = new Map();
+        for (const fam of families.values()) {
+            if (fam.length === 1) { folded.set(fam[0][0], fam[0][1]); continue; }
+            const shared = fam[0][0].clone();
+            shared.color.setRGB(1, 1, 1); shared.vertexColors = true;
+            shared.onBeforeCompile = fam[0][0].onBeforeCompile;
+            shared.customProgramCacheKey = fam[0][0].customProgramCacheKey;
+            this.disposables.push(shared);
+            const all = [];
+            for (const [mat, list] of fam) for (const g of list) {
+                const n = g.attributes.position.count, col = new Float32Array(n * 3);
+                for (let i = 0; i < n; i++) { col[i * 3] = mat.color.r; col[i * 3 + 1] = mat.color.g; col[i * 3 + 2] = mat.color.b; }
+                g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+                all.push(g);
+            }
+            folded.set(shared, all);
+        }
+        this.map = folded;
+        for (const [mat, list] of this.map) {
+            const cells = new Map();
+            for (const g of list) {
+                g.computeBoundingBox(); _b.copy(g.boundingBox).getCenter(_c);
+                const key = Math.floor(_c.x / cell) + ',' + Math.floor(_c.z / cell);
+                (cells.get(key) || cells.set(key, []).get(key)).push(g);
+            }
+            for (const parts of cells.values()) {
+                const merged = parts.length === 1 ? parts[0] : mergeGeometries(parts, false);
+                if (parts.length > 1) parts.forEach(g => g.dispose());
+                if (!merged) continue;
+                merged.computeBoundingBox(); merged.computeBoundingSphere();
+                const mesh = new THREE.Mesh(merged, mat);
+                mesh.castShadow = false; mesh.receiveShadow = true;   // trim is small; skip it in the shadow pass
+                // batched set dressing: keep it out of the per-item scenery LOD; culled per chunk instead
+                mesh.userData.environmentManaged = true;
+                mesh.userData.occludable = true;
+                this.group.add(mesh);
+                this.disposables.push(merged);
+            }
         }
         this.map.clear();
     }

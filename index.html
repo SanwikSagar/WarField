@@ -2,12 +2,17 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0e100f">
     <title>WARFIELD: Operation Blackout</title>
     <link rel="stylesheet" href="/src/ui/styles.css?v=reference-menu-14">
     <link rel="stylesheet" href="/src/ui/frontline.css?v=3">
     <link rel="stylesheet" href="/src/ui/story.css?v=2">
     <link rel="stylesheet" href="/src/ui/campaign.css?v=3">
+    <link rel="stylesheet" href="/src/ui/gameplay.css?v=4">
+    <link rel="stylesheet" href="/src/ui/loading.css?v=1">
     <script type="importmap">
     {
         "imports": {
@@ -59,7 +64,9 @@
                     <span class="mi-index">06</span><span class="mi-label">Quit</span><span class="mi-meta"></span>
                 </button>
             </nav>
+            <div class="menu-desc" id="menu-desc" aria-live="polite"></div>
         </div>
+        <div class="menu-ticker" aria-hidden="true"><span class="mt-label">INTEL FEED</span><div class="mt-track"><div class="mt-run" id="mt-run"></div></div></div>
 
         <aside class="menu-feature" id="menu-feature" aria-label="Latest episode">
             <div class="mf-card" id="mf-card">
@@ -84,7 +91,7 @@
 
         <div class="menu-footer">
             <div class="footer-controls"><span class="hint"><kbd class="k-kbm">↵</kbd><kbd class="k-pad">A</kbd>SELECT</span><span class="hint"><kbd class="k-kbm">Esc</kbd><kbd class="k-pad">B</kbd>BACK</span></div>
-            <div class="footer-build">WARFIELD · S1 BUILD 2026.11</div>
+            <div class="footer-build"><span class="footer-player" id="footer-player"></span>WARFIELD · S1 BUILD 2026.11</div>
         </div>
     </div>
 
@@ -126,6 +133,7 @@
                 <button class="stab" data-tab="audio">Audio</button>
                 <button class="stab" data-tab="controls">Controls</button>
                 <button class="stab" data-tab="accessibility">Accessibility</button>
+                <button class="stab" data-tab="profile">Profile</button>
             </div>
             <div class="settings-body" id="settings-body"></div>
             <div class="settings-footer">
@@ -188,6 +196,7 @@
             <nav class="pause-nav">
                 <button class="menu-item" data-pause="resume"><span class="mi-label">Resume</span></button>
                 <button class="menu-item" data-pause="settings"><span class="mi-label">Settings</span></button>
+                <button class="menu-item" data-pause="fullscreen"><span class="mi-label" id="pause-fs-label">Fullscreen</span></button>
                 <button class="menu-item" data-pause="restart"><span class="mi-label">Restart Checkpoint</span></button>
                 <button class="menu-item" data-pause="abort"><span class="mi-label">Abort to Main Menu</span></button>
             </nav>

@@ -1,6 +1,7 @@
 import * as THREE from '/node_modules/three/build/three.module.js';
 import { globalEvents } from '../core/EventManager.js';
 import { createCharacter, hasCharacters } from '../core/CharacterFactory.js';
+import { animation } from '../animation/AnimationSystem.js';
 
 /**
  * State-machine enemy soldier (GDD 5.5 / 11.7). States: PATROL, SUSPICIOUS,
@@ -91,6 +92,7 @@ export class EnemyAI {
         const ch = hasCharacters() ? createCharacter(this.deps.characterKind || 'army2', 'enemy', 'ak74m') : null;
         if (ch) {
             this.char = ch;
+            animation.addActor(ch, { group: ch.root, getState: () => this._animState });
             this.group = ch.root;
             this.head = ch.head; this.torso = ch.body;
             this.hitMeshes = ch.hitMeshes;
@@ -205,7 +207,9 @@ export class EnemyAI {
         const pp = this.deps.getPlayerPos ? this.deps.getPlayerPos() : null;
         const fwd = new THREE.Vector3(Math.sin(this._yaw), 0, Math.cos(this._yaw));
         const fromFront = pp ? pp.clone().sub(this.position).setY(0).normalize().dot(fwd) > 0 : true;
-        this._fall = { dir: fromFront ? -1 : 1, roll: (Math.random() - 0.5) * 0.6, landed: false, ground: this.position.y, delay: isHeadshot ? 0.05 : 0.18 + Math.random() * 0.12 };
+        // physical fall: the body pivots about its feet under gravity (theta'' = g/L sin theta), knees first unless a headshot
+        this._fall = { dir: fromFront ? -1 : 1, roll: (Math.random() - 0.5) * 0.6, landed: false, ground: this.position.y, delay: isHeadshot ? 0.05 : 0.18 + Math.random() * 0.12,
+            theta: 0.03, omega: isHeadshot ? 1.1 : 0.35 + Math.random() * 0.3, settled: false };
         this._dropWeapon();
         const fx = this._fx();
         if (fx) fx.spawnHitMarker(this.position.clone().setY(this.position.y + (isHeadshot ? 1.62 : 1.25)));
@@ -549,7 +553,8 @@ export class EnemyAI {
 
     _enemyMuzzleFlash(pos) {
         if (!this._flashSprite) {
-            const tex = new THREE.CanvasTexture(this._makeFlashCanvas());
+            // one flash texture shared by every enemy (was one canvas texture per soldier, never freed)
+            const tex = EnemyAI._flashTex || (EnemyAI._flashTex = new THREE.CanvasTexture(this._makeFlashCanvas()));
             this._flashSprite = new THREE.Sprite(new THREE.SpriteMaterial({
                 map: tex, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, opacity: 0
             }));
@@ -637,7 +642,12 @@ export class EnemyAI {
             const s = Math.sin(this._yaw), c = Math.cos(this._yaw);
             const moveZ = sp > 0.05 ? (v.x * s + v.z * c) / sp : 1;
             const moveX = sp > 0.05 ? (v.x * c - v.z * s) / sp : 0;
-            this.char.update(dt, { speed: sp, aiming: aiming && this.reloadT < 0, dead: false, hit, moveX, moveZ, reload: this.reloadT >= 0 ? this.reloadT / 2.4 : -1,
+            let hitSide;
+            if (hit && this.deps.getPlayerPos) {          // twist away from the side the round came from
+                const pp = this.deps.getPlayerPos();
+                hitSide = Math.sign((pp.x - this.position.x) * c - (pp.z - this.position.z) * s) || 1;
+            }
+            this._animState = ({ speed: sp, aiming: aiming && this.reloadT < 0, dead: false, hit, hitSide, moveX, moveZ, reload: this.reloadT >= 0 ? this.reloadT / 2.4 : -1,
                 crouch: this.suppressed > 0.8 && sp < 1.5, limp: this.health < this.maxHealth * 0.45 });
             return;
         }
@@ -662,15 +672,23 @@ export class EnemyAI {
 
     _updateDeath(dt) {
         this.deathTimer += dt;
-        if (this.char) this.char.update(dt, { speed: 0, aiming: false, dead: true });
+        if (this.char) this._animState = { speed: 0, aiming: false, dead: true };
         if (this._flashSprite) this._flashSprite.material.opacity = 0;
         const f = this._fall || { dir: -1, roll: 0, ground: this.position.y, delay: 0.2 };
-        // knees give first, then the body topples under gravity with a small bounce on impact
-        const t = Math.max(0, this.deathTimer - f.delay);
-        const fallT = 0.55;
-        let k = Math.min(1, (t / fallT) * (t / fallT));
-        if (t > fallT) k = 1 - Math.abs(Math.sin((t - fallT) * 9)) * Math.exp(-(t - fallT) * 7) * 0.06;
-        if (!f.landed && t >= fallT) {
+        // knees give first, then the body topples about the feet under gravity and bounces once on impact
+        const TH = Math.PI * 0.47;
+        if (f.theta === undefined) { f.theta = 0.03; f.omega = 0.4; }
+        if (this.deathTimer > f.delay && !f.settled) {
+            f.omega += (9.8 / 1.0) * Math.sin(f.theta + 0.05) * dt;
+            f.theta += f.omega * dt;
+            if (f.theta >= TH) {
+                f.theta = TH;
+                if (f.omega > 1.2) f.omega = -f.omega * 0.16;           // impact: small rebound
+                else { f.omega = 0; f.settled = true; }
+            }
+        }
+        const k = f.theta / TH;
+        if (!f.landed && f.theta >= TH) {
             f.landed = true;
             const fx = this._fx();
             if (fx) fx.bodyFall(this.position.clone().add(new THREE.Vector3(Math.sin(this._yaw), 0, Math.cos(this._yaw)).multiplyScalar(f.dir * 0.9)), this.deps.dusty ? 0x9a8462 : 0x6e604c);
@@ -679,10 +697,17 @@ export class EnemyAI {
         const buckle = Math.min(1, this.deathTimer / Math.max(0.05, f.delay));
         this.group.rotation.set(f.dir * k * Math.PI * 0.47, this._yaw, f.roll * k, 'YXZ');
         // sink a little as the knees fold, rest on the ground (not world y=0), then slowly settle in after a while
-        const sink = this.deathTimer > 12 ? Math.min(1, (this.deathTimer - 12) / 2.5) * 0.6 : 0;
-        this.group.position.set(this.position.x, f.ground - buckle * 0.12 * (1 - k) - k * 0.08 - sink, this.position.z);
+        this.group.position.set(this.position.x, f.ground - buckle * 0.12 * (1 - k) - k * 0.08, this.position.z);
         this._updateDrop(dt);
-        if (this.deathTimer > 14.5) this.group.visible = false;
+        // settled: bake the final pose into the shared static corpse batch, stop animating the skeleton
+        if (f.settled && !this._baked && this.deathTimer > f.delay + 1.6 && animation.corpses && this.char) {
+            this._baked = true;
+            this.group.updateMatrixWorld(true);
+            animation.corpses.bake(this.group, { blood: true, bloodPos: this.position.clone().add(new THREE.Vector3(Math.sin(this._yaw), 0, Math.cos(this._yaw)).multiplyScalar(f.dir * 0.8)) });
+            this.group.userData.hidden = true;
+            this.group.visible = false;
+            animation.removeActor(this.char);
+        }
     }
 
     _updateDrop(dt) {
@@ -702,8 +727,8 @@ export class EnemyAI {
     dispose() {
         this.scene.remove(this.group);
         if (this._drop) this.scene.remove(this._drop.o);
-        if (this._flashSprite) this.scene.remove(this._flashSprite);
-        if (this.char) { this.char.dispose(); return; }
+        if (this._flashSprite) { this.scene.remove(this._flashSprite); this._flashSprite.material.dispose(); }
+        if (this.char) { animation.removeActor(this.char); this.char.dispose(); return; }
         this.group.traverse(o => { if (o.geometry) o.geometry.dispose(); });
         this.materials.forEach(m => m.dispose());
     }

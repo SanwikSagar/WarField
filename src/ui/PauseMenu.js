@@ -29,8 +29,14 @@ export class PauseMenu {
         this._sound(action === 'resume' ? 'back' : 'select');
         if (action === 'resume') this.deps.onResume && this.deps.onResume();
         else if (action === 'settings') this.deps.onSettings && this.deps.onSettings();
+        else if (action === 'fullscreen') { this.deps.onFullscreen && this.deps.onFullscreen(); setTimeout(() => this._fsLabel(), 300); }
         else if (action === 'restart') this.deps.onRestart && this.deps.onRestart();
         else if (action === 'abort') this.deps.onAbort && this.deps.onAbort();
+    }
+
+    _fsLabel() {
+        const l = document.getElementById('pause-fs-label');
+        if (l) l.textContent = document.fullscreenElement ? 'Exit Fullscreen' : 'Fullscreen';
     }
 
     _select(i) {

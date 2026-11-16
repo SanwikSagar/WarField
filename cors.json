@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["http://localhost:3000", "https://YOUR-GAME-DOMAIN.example"],
+    "method": ["GET", "HEAD"],
+    "responseHeader": ["Content-Type"],
+    "maxAgeSeconds": 3600
+  }
+]

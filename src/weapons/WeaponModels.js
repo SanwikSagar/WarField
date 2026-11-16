@@ -1,5 +1,11 @@
 import * as THREE from '/node_modules/three/build/three.module.js';
 import { makeGLTFLoader } from '../environments/AssetLoaders.js';
+import { mergeByMaterial } from '../render/MeshMerge.js';
+import { gunMaterial, gunMaterialShared } from './GunMaterials.js';
+import { mergeGeometries } from '/node_modules/three/examples/jsm/utils/BufferGeometryUtils.js';
+
+// NPC (third-person) weapons never animate parts: merged once per id, shared by every soldier
+const tpMerged = new Map();
 
 /**
  * Real weapon models (user supplied, Draco-compressed GLBs in
@@ -151,23 +157,20 @@ function localDir(node, v) {
 export function createWeaponModel(id, mode = 'fp') {
     const tpl = (mode === 'tp' && tpTemplates[id]) || templates[id];
     if (!tpl) return null;
+    if (mode === 'tp') return createMergedTP(id, tpl);
     const scene = tpl.scene.clone(true);
     scene.updateMatrixWorld(true);
     const spec = tpl.spec;
-    // materials: per instance so tint/emissive can change; kill reflective black look
+    // materials: per instance so tint/emissive can change; real finishes (GunMaterials) instead of flat colours
     const mats = new Map();
     scene.traverse(o => {
         if (!o.isMesh) return;
-        if (!mats.has(o.material)) {
-            const m = o.material.clone();
-            if (m.metalness !== undefined) { m.metalness = Math.min(0.85, m.metalness); m.roughness = Math.max(0.32, m.roughness ?? 0.5); }
-            if (m.envMapIntensity !== undefined) m.envMapIntensity = 1.0;
-            mats.set(o.material, m);
-        }
+        if (!mats.has(o.material)) mats.set(o.material, gunMaterial(o.material));
         o.material = mats.get(o.material);
         o.castShadow = mode === 'tp'; o.receiveShadow = true;
         o.frustumCulled = mode !== 'fp';
     });
+    if (mode === 'fp') mergeStaticParts(scene, spec);
     const inner = new THREE.Group();
     inner.add(scene);
     inner.matrixAutoUpdate = false;
@@ -200,5 +203,72 @@ export function createWeaponModel(id, mode = 'fp') {
         /** optic body nodes (hidden while looking through the scope overlay) */
         opticNodes: spec.sightMode === 'optic' ? findNodes(scene, spec.sight) : [],
         optic: spec.sightMode === 'optic' ? (spec.file === 'ak74m' ? 'dot' : spec.file === 'uar10' ? 'scope' : 'lpvo') : null
+    };
+}
+
+/**
+ * First-person weapon: the ~30 parts that never move are merged in place into one mesh per
+ * material (a handful of draw calls instead of ~35, every frame). Bolt / slide, charging handle,
+ * magazine and optic body keep their own nodes so they can still animate or hide.
+ */
+function mergeStaticParts(scene, spec) {
+    const keep = new Set();
+    for (const re of [...spec.bolt, spec.charging, spec.mag, spec.sightMode === 'optic' ? spec.sight : null]) {
+        if (re) findNodes(scene, re).forEach(n => keep.add(n));
+    }
+    const kept = (o) => { for (let p = o; p && p !== scene; p = p.parent) if (keep.has(p)) return true; return false; };
+    const shown = (o) => { for (let p = o; p && p !== scene; p = p.parent) if (!p.visible) return false; return true; };
+    scene.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4().copy(scene.matrixWorld).invert();
+    const buckets = new Map(), remove = [];
+    scene.traverse(o => {
+        if (!o.isMesh || o.isSkinnedMesh || Array.isArray(o.material) || kept(o)) return;
+        if (!shown(o)) return;
+        const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+        for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv'].includes(k)) g.deleteAttribute(k);
+        if (!g.attributes.normal) g.computeVertexNormals();
+        if (!g.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+        g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld));
+        (buckets.get(o.material) || buckets.set(o.material, []).get(o.material)).push(g);
+        remove.push(o);
+    });
+    remove.forEach(o => o.parent && o.parent.remove(o));
+    for (const [mat, list] of buckets) {
+        const merged = list.length === 1 ? list[0] : mergeGeometries(list, false);
+        if (list.length > 1) list.forEach(g => g.dispose());
+        if (!merged) continue;
+        const mesh = new THREE.Mesh(merged, mat);
+        mesh.frustumCulled = false; mesh.receiveShadow = true; mesh.castShadow = false;
+        mesh.name = 'merged_' + (mat.name || 'part');
+        scene.add(mesh);
+    }
+}
+
+/** Third-person weapon: shared merged geometry + shared materials (2-4 draw calls instead of ~30). */
+function createMergedTP(id, tpl) {
+    let m = tpMerged.get(id);
+    if (!m) {
+        const sc = tpl.scene.clone(true);
+        const mats = new Map();
+        sc.traverse(o => {
+            if (!o.isMesh) return;
+            if (!mats.has(o.material)) mats.set(o.material, gunMaterialShared(o.material));
+            o.material = mats.get(o.material);
+            o.castShadow = false; o.receiveShadow = true;
+        });
+        m = { group: mergeByMaterial(sc), materials: [...mats.values()] };
+        tpMerged.set(id, m);
+    }
+    const scene = m.group.clone(true);          // shares geometry + materials
+    const inner = new THREE.Group();
+    inner.add(scene);
+    inner.matrixAutoUpdate = false;
+    inner.matrix.copy(CANON).premultiply(new THREE.Matrix4().makeRotationY(Math.PI));
+    const root = new THREE.Group();
+    root.add(inner);
+    const noop = () => {};
+    return {
+        id, root, kind: tpl.spec.kind, length: tpl.length, casing: tpl.casing, points: tpl.points, materials: m.materials,
+        setBolt: noop, setCharging: noop, setMag: noop, magWorld: () => null, opticNodes: [], optic: null
     };
 }

@@ -1,0 +1,18 @@
+rules_version = '2';
+
+// Warfield cloud saves: one small JSON file per player, private to that player.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /users/{uid}/save.json {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+                            && request.resource.size < 200 * 1024
+                            && request.resource.contentType == 'application/json';
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+    // everything else is closed
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

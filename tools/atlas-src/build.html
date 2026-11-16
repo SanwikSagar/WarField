@@ -1,0 +1,147 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>atlas build</title></head>
+<body style="background:#444">
+<canvas id="c" width="1024" height="1024"></canvas>
+<script type="module">
+// One-off decal atlas composer (dev only; output saved to public/assets/vfx/decals.webp).
+// To rebuild: copy this folder to public/_atlas_src/, open http://localhost:3000/_atlas_src/build.html,
+// run tools/receive-file.mjs, then POST window.__atlas to http://127.0.0.1:3999/save?name=decals.webp.
+// Sources: ambientCG CC0 decals (AsphaltDamage001, Leaking004, Leaking013A, TireTracks001),
+// Poly Haven CC0 textures (rubble, burned_ground_01, concrete_debris), CC0 smoke flipbook (OpenGameArt),
+// plus procedurally drawn bullet holes / blood / oil.
+const C = 256, cv = document.getElementById('c'), X = cv.getContext('2d');
+const load = (src) => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+const tmp = (w = C, h = C) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const cell = (i) => [(i % 4) * C, Math.floor(i / 4) * C];
+
+// colour image * mask image (mask luminance -> alpha), optional tint and alpha gain
+function masked(color, mask, { sx = 0, sy = 0, sw, sh, invert = false, gain = 1, tint = null, radial = 0, lo = 0, hi = 1 } = {}) {
+    const a = tmp(), b = tmp(), ax = a.getContext('2d'), bx = b.getContext('2d');
+    sw = sw || color.width; sh = sh || color.height;
+    ax.drawImage(color, sx, sy, sw, sh, 0, 0, C, C);
+    bx.drawImage(mask || color, sx, sy, sw, sh, 0, 0, C, C);
+    const A = ax.getImageData(0, 0, C, C), B = bx.getImageData(0, 0, C, C);
+    for (let p = 0; p < C * C; p++) {
+        let m = (B.data[p * 4] + B.data[p * 4 + 1] + B.data[p * 4 + 2]) / 765;
+        if (invert) m = 1 - m;
+        m = Math.max(0, Math.min(1, (m - lo) / (hi - lo)));
+        if (radial) {
+            const x = (p % C) / C - 0.5, y = Math.floor(p / C) / C - 0.5;
+            const d = Math.hypot(x, y) * 2;
+            m *= Math.max(0, Math.min(1, (1 - d) * radial));
+        }
+        if (tint) { A.data[p * 4] = tint[0]; A.data[p * 4 + 1] = tint[1]; A.data[p * 4 + 2] = tint[2]; }
+        A.data[p * 4 + 3] = Math.max(0, Math.min(255, m * gain * 255));
+    }
+    ax.putImageData(A, 0, 0);
+    return a;
+}
+// photo texture with a ragged radial alpha (splat of rubble / soot / dust)
+function splat(img, { dark = 1, ragged = 0.35, tintMul = null } = {}) {
+    const a = tmp(), x = a.getContext('2d');
+    x.drawImage(img, 0, 0, img.width * 0.5, img.height * 0.5, 0, 0, C, C);
+    const D = x.getImageData(0, 0, C, C);
+    const lobes = Array.from({ length: 7 }, () => [rnd() * 6.283, 0.6 + rnd() * 0.4]);
+    for (let p = 0; p < C * C; p++) {
+        const px = (p % C) / C - 0.5, py = Math.floor(p / C) / C - 0.5;
+        const ang = Math.atan2(py, px);
+        let r = 0.36; for (const [ph, k] of lobes) r += Math.sin(ang * 3 + ph) * 0.03 * k;
+        const n = Math.sin(px * 61 + py * 23) * Math.sin(py * 47 - px * 13);
+        const d = Math.hypot(px, py) / (r + n * 0.02 * ragged * 4);
+        const al = Math.max(0, Math.min(1, (1 - d) * 3));
+        D.data[p * 4] *= dark * (tintMul ? tintMul[0] : 1); D.data[p * 4 + 1] *= dark * (tintMul ? tintMul[1] : 1); D.data[p * 4 + 2] *= dark * (tintMul ? tintMul[2] : 1);
+        D.data[p * 4 + 3] = al * 255;
+    }
+    x.putImageData(D, 0, 0);
+    return a;
+}
+function hole(kind) {
+    const a = tmp(), g = a.getContext('2d'), c = C / 2;
+    const ring = { concrete: ['rgba(60,58,54,0.9)', 'rgba(150,146,138,0.55)'], metal: ['rgba(25,25,25,1)', 'rgba(170,170,175,0.6)'],
+        wood: ['rgba(30,20,12,1)', 'rgba(140,105,70,0.6)'], dirt: ['rgba(30,24,18,0.95)', 'rgba(80,64,46,0.5)'] }[kind];
+    // chipped crater (concrete / wood) or clean puncture with bright rim (metal)
+    const R = kind === 'metal' ? 0.16 : 0.42;
+    g.translate(c, c);
+    for (let i = 0; i < 26; i++) {
+        const ang = rnd() * 6.283, len = c * R * (0.5 + rnd() * 0.9);
+        g.fillStyle = ring[1]; g.beginPath();
+        g.moveTo(0, 0); g.lineTo(Math.cos(ang - 0.15) * len, Math.sin(ang - 0.15) * len); g.lineTo(Math.cos(ang + 0.15) * len, Math.sin(ang + 0.15) * len); g.fill();
+    }
+    if (kind !== 'metal') for (let i = 0; i < 9; i++) {      // radial cracks
+        const ang = rnd() * 6.283; g.strokeStyle = 'rgba(40,38,35,0.6)'; g.lineWidth = 1.5;
+        g.beginPath(); g.moveTo(0, 0); let x = 0, y = 0;
+        for (let s = 0; s < 6; s++) { x += Math.cos(ang + (rnd() - 0.5) * 0.8) * c * 0.11; y += Math.sin(ang + (rnd() - 0.5) * 0.8) * c * 0.11; g.lineTo(x, y); }
+        g.stroke();
+    }
+    const gr = g.createRadialGradient(0, 0, 0, 0, 0, c * (kind === 'metal' ? 0.13 : 0.2));
+    gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(0.55, ring[0]); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr; g.beginPath(); g.arc(0, 0, c * 0.22, 0, 6.283); g.fill();
+    if (kind === 'metal') { g.strokeStyle = 'rgba(200,200,205,0.7)'; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, c * 0.1, 0, 6.283); g.stroke(); }
+    return a;
+}
+function blood(n) {
+    const a = tmp(), g = a.getContext('2d'), c = C / 2;
+    g.translate(c, c);
+    const drop = (x, y, r, al) => { const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(70,6,6,${al})`); gr.addColorStop(0.7, `rgba(55,4,4,${al * 0.9})`); gr.addColorStop(1, 'rgba(40,2,2,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 6.283); g.fill(); };
+    drop(0, 0, c * 0.42, 0.95);
+    for (let i = 0; i < 40 + n * 10; i++) { const ang = rnd() * 6.283, d = c * (0.3 + rnd() * 0.6); drop(Math.cos(ang) * d, Math.sin(ang) * d, c * (0.02 + rnd() * 0.08), 0.9); }
+    return a;
+}
+function scorch(img, k) {
+    const a = splat(img, { dark: 0.22 }), g = a.getContext('2d'), c = C / 2;
+    const gr = g.createRadialGradient(c, c, 0, c, c, c * 0.5); gr.addColorStop(0, 'rgba(6,5,4,' + (0.85 * k) + ')'); gr.addColorStop(1, 'rgba(6,5,4,0)');
+    g.globalCompositeOperation = 'source-atop'; g.fillStyle = gr; g.fillRect(0, 0, C, C);
+    return a;
+}
+function cracks() {
+    const a = tmp(), g = a.getContext('2d');
+    g.lineCap = 'round';
+    const walk = (x, y, ang, len, w, depth) => {
+        g.strokeStyle = 'rgba(18,16,14,' + (0.55 + 0.35 * w / 4) + ')'; g.lineWidth = w;
+        g.beginPath(); g.moveTo(x, y);
+        for (let i = 0; i < len; i++) {
+            ang += (rnd() - 0.5) * 0.7; x += Math.cos(ang) * 6; y += Math.sin(ang) * 6; g.lineTo(x, y);
+            if (depth < 3 && rnd() < 0.08) { g.stroke(); walk(x, y, ang + (rnd() < 0.5 ? 1 : -1) * (0.5 + rnd()), len * 0.5, w * 0.6, depth + 1); g.strokeStyle = 'rgba(18,16,14,0.8)'; g.lineWidth = w; g.beginPath(); g.moveTo(x, y); }
+        }
+        g.stroke();
+    };
+    for (let k = 0; k < 5; k++) walk(C / 2, C / 2, k * 1.26 + rnd() * 0.5, 16 + rnd() * 8, 3.2, 0);
+    return a;
+}
+function oil() {
+    const a = tmp(), g = a.getContext('2d'), c = C / 2;
+    for (let i = 0; i < 9; i++) {
+        const x = c + (rnd() - 0.5) * c * 0.6, y = c + (rnd() - 0.5) * c * 0.6, r = c * (0.2 + rnd() * 0.3);
+        const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, 'rgba(12,10,8,0.8)'); gr.addColorStop(1, 'rgba(12,10,8,0)');
+        g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 6.283); g.fill();
+    }
+    return a;
+}
+
+const T = '/assets/textures/city/';
+const [asphC, asphO, leakC, leakO, leak2, tireC, tireAO, rubble, burned, debris, smoke] = await Promise.all([
+    load('AsphaltDamage001_1K-JPG_Color.jpg'), load('AsphaltDamage001_1K-JPG_Opacity.jpg'),
+    load('Leaking004_1K-JPG_Color.jpg'), load('Leaking004_1K-JPG_Opacity.jpg'), load('Leaking013A_1K-JPG_Color.jpg'),
+    load('TireTracks001_1K-JPG_Color.jpg'), load('TireTracks001_1K-JPG_AmbientOcclusion.jpg'),
+    load(T + 'rubble_diff_1k.jpg'), load(T + 'burned_ground_01_diff_1k.jpg'), load(T + 'concrete_debris_diff_1k.jpg'),
+    load('/assets/vfx/explosion_smoke.png')
+]);
+// soot / scorch: a frame of the CC0 smoke flipbook (6x5), luminance -> alpha, near-black
+const frame = (f) => { const w = smoke.width / 6, h = smoke.height / 5; return masked(smoke, smoke, { sx: (f % 6) * w, sy: Math.floor(f / 6) * h, sw: w, sh: h, tint: [14, 12, 10], gain: 1.6, radial: 1.6 }); };
+const cells = [
+    hole('concrete'), hole('metal'), hole('wood'), hole('dirt'),
+    blood(1), blood(3),
+    scorch(burned, 1), scorch(debris, 0.7),
+    cracks(),
+    masked(leakC, leakO, { sx: 0, sy: 0, sw: 512, sh: 512, gain: 0.8, tint: [52, 44, 34] }),
+    cracks(),
+    masked(tireC, tireAO, { sx: 256, sy: 0, sw: 256, sh: 256, invert: true, lo: 0.15, hi: 0.6, tint: [34, 30, 26], gain: 0.8 }),
+    splat(rubble, { dark: 0.9 }), splat(burned, { dark: 0.6 }), oil(), splat(debris, { dark: 0.85, tintMul: [1, 0.97, 0.92] })
+];
+X.clearRect(0, 0, 1024, 1024);
+cells.forEach((c, i) => { const [x, y] = cell(i); X.drawImage(c, x, y); });
+window.__atlas = cv.toDataURL('image/webp', 0.86);
+window.__done = true;
+</script>
+</body></html>

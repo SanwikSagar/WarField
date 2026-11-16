@@ -1,3 +1,4 @@
+import './render/ShaderSetup.js';      // global shader conventions (albedo cap) before any program compiles
 import { Game } from './core/Game.js';
 
 // A rebuilt/updated server invalidates the lazily-imported level chunks of an already open

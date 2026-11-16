@@ -30,7 +30,8 @@ export function loadCharacters() {
         const loader = makeGLTFLoader();
         for (const name of ['soldier', 'army1', 'army2']) {
             try {
-                const gl = await loader.loadAsync(`/assets/models/characters/${name}.glb`);
+                // offline-reduced LOD (tools/simplify-characters.mjs, ~4.5-5.5k tris), else the original (~10-12k)
+                const gl = await loader.loadAsync(`/assets/models/characters/${name}_lod.glb`).catch(() => loader.loadAsync(`/assets/models/characters/${name}.glb`));
                 T[name] = name === 'soldier' ? prepSkinned(gl.scene) : prepStatic(gl.scene, name);
             } catch (e) { console.warn('Character failed to load:', name, e); }
         }
@@ -183,9 +184,9 @@ function skinGeometry(geo, J, tpose) {
 // ═══════════════════════════════════════════════════════════════════════
 const TEAM_TINT = {
     // dark clothing for allies, lighter for enemies
-    soldier: { ally: 0x777a72, enemy: 0xe6d9b8 },
-    army1: { ally: 0xb4b4ae, enemy: 0xd8d4c8 },
-    army2: { ally: 0x4a4d52, enemy: 0xf2f2ee }
+    soldier: { ally: 0x777a72, enemy: 0xa89c84 },
+    army1: { ally: 0xb4b4ae, enemy: 0xa29e94 },
+    army2: { ally: 0x4a4d52, enemy: 0x9c9a92 }
 };
 
 /** kind: 'soldier' | 'army1' | 'army2'; team: 'ally' | 'enemy' */
@@ -261,11 +262,16 @@ export function createCharacter(kind, team, weaponId = null) {
     return {
         root, rig, materials, hitMeshes: [head, body], head, body, rifle,
         update: (dt, state) => anim.update(dt, state),
+        get phase() { return anim.phase; },
+        set groundAt(fn) { anim.groundAt = fn; },
         kick: () => { anim.kick = 1; },
         talk: (seconds) => { anim.talkT = Math.max(anim.talkT, seconds); },
         get talking() { return anim.talkT > 0; },
         muzzleWorld: (out = new THREE.Vector3()) => anim.muzzleWorld(out),
-        dispose() { materials.forEach(m => m.dispose()); head.geometry.dispose(); body.geometry.dispose(); proxyMat.dispose(); }
+        dispose() {
+            materials.forEach(m => m.dispose()); head.geometry.dispose(); body.geometry.dispose(); proxyMat.dispose();
+            disposeSkeletons(model);   // bone textures live on the GPU until the skeleton is disposed
+        }
     };
 }
 
@@ -302,6 +308,12 @@ export function createFPArmsModel() {
         o.material = seen.get(o.material);
     });
     return { root, model, bones };
+}
+
+/** Free every skeleton (and its bone texture) under a model, once each. */
+export function disposeSkeletons(root) {
+    const seen = new Set();
+    root.traverse(o => { if (o.isSkinnedMesh && o.skeleton && !seen.has(o.skeleton)) { seen.add(o.skeleton); o.skeleton.dispose(); } });
 }
 
 /** Real weapon model held by an NPC (muzzle +Z), grip at the old rifle's grip spot. */
@@ -423,6 +435,11 @@ class Animator {
         this.amp = 0; this.aim = 0; this.dead = 0; this.flinch = 0; this.crouch = 0;
         this.lookYaw = 0; this.talkT = 0; this.talk = 0;
         this.hipsRest = rig.rest.hips ? rig.rest.hips.pos.clone() : new THREE.Vector3();
+        // no two soldiers breathe, sway or settle into death the same way
+        this.vr = 0.82 + Math.random() * 0.36;
+        this.deadVar = [Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1];
+        this.flinchSide = 0;
+        this.groundAt = null;
     }
 
     /** rotate bone by (x,y,z) euler in character space ('XYZ': Z roll applied first, then Y, then X) */
@@ -445,19 +462,30 @@ class Animator {
         this.aim += ((s.aiming ? 1 : 0) - this.aim) * k(9);
         this.dead += ((s.dead ? 1 : 0) - this.dead) * k(6);
         this.crouch += ((s.crouch ? 1 : 0) - this.crouch) * k(6);
-        if (s.hit) this.flinch = 1;
+        if (s.hit) { this.flinch = 1; this.flinchSide = s.hitSide ?? (Math.random() < 0.5 ? -1 : 1); }
         this.kick = Math.max(0, (this.kick || 0) - dt * 9);
         this.flinch = Math.max(0, this.flinch - dt * 4);
-        this.phase += dt * (speed * 4.0 + (speed > 0.1 ? 1.2 : 0));
+        // stride-locked cadence: cycle length grows with speed (walk ~1.7 m, run ~2.4 m) so feet don't skate
+        // turning on the spot: short shuffling steps instead of sliding round on planted feet
+        const turnStep = speed < 0.4 ? clamp(Math.abs(s.turn || 0) * 0.45, 0, 1.0) * (1 - this.dead) : 0;
+        const gait = Math.max(speed, turnStep);
+        if (turnStep > speed) this.amp += (clamp(turnStep / 3.2, 0, 0.35) - this.amp) * k(10);
+        this.phase += dt * (gait > 0.05 ? (Math.PI * 2 * gait) / (1.1 + 0.4 * Math.min(gait, 4)) : 0);
+        // motion cues supplied by the central AnimationSystem (acceleration, turn rate, ground slope)
+        this.sAccel = (this.sAccel || 0) + (clamp(s.accel || 0, -6, 6) - (this.sAccel || 0)) * k(6);
+        this.sTurn = (this.sTurn || 0) + (clamp(s.turn || 0, -4, 4) - (this.sTurn || 0)) * k(5);
+        this.sSlope = (this.sSlope || 0) + (clamp(s.slope || 0, -0.7, 0.7) - (this.sSlope || 0)) * k(5);
         const ph = this.phase, A = this.amp, t = this.t;
         const live = 1 - this.dead, aim = this.aim, T = this.rig.tpose;
         const sw = Math.sin(ph), swR = Math.sin(ph + Math.PI);
         const bob = Math.abs(Math.sin(ph)) * 0.025 * A;
 
         // idle life
-        const breath = Math.sin(t * 1.7) * 0.012;
-        const sway = Math.sin(t * 0.55) * 0.03;
-        const look = Math.sin(t * 0.35) * 0.35 + Math.sin(t * 0.9) * 0.1;
+        const vr = this.vr;
+        const breath = Math.sin(t * 1.7 * vr) * 0.012 * (1 + aim * 0.4 + A * 0.8);     // heavier breathing when moving / tense
+        const sway = Math.sin(t * 0.55 * vr + vr * 4) * 0.03;
+        const look = Math.sin(t * 0.35 * vr) * 0.35 + Math.sin(t * 0.9 * vr + 1.3) * 0.1;
+        const fl = this.flinch * this.flinch, fs = this.flinchSide;     // directional hit reaction
 
         // talking: syllable-rate nods, head tilt, look toward the listener, hand gestures
         this.talkT = Math.max(0, this.talkT - dt);
@@ -471,13 +499,14 @@ class Animator {
         const gesture = tk * (1 - A) * (0.55 + 0.45 * Math.sin(t * 0.9));
 
         // ── hips / spine / head
-        const lean = 0.05 + A * 0.08 + aim * 0.1 + this.crouch * 0.25 + this.flinch * 0.25 - this.kick * 0.06;
-        this.rot('hips', 0.0, -sw * 0.1 * A, sway * 0.25 * (1 - A) + sw * 0.04 * A * live);   // pelvis drops on the swing side
-        this.rot('spine', lean * 0.5 + breath, sw * 0.12 * A * (1 - aim * 0.7) + aim * -0.25 + gaze * 0.12, -sway * 0.3 * (1 - A));
+        const lean = 0.05 + A * 0.08 + aim * 0.1 + this.crouch * 0.25 + this.flinch * 0.25 - this.kick * 0.06
+            + this.sAccel * 0.012 * live + (this.sSlope > 0 ? this.sSlope * 0.5 : this.sSlope * 0.25) * live;
+        this.rot('hips', 0.0, -sw * 0.1 * A, sway * 0.25 * (1 - A) + sw * 0.04 * A * live - this.sTurn * 0.05 * Math.min(1, A + 0.3) * live);   // banks into turns   // pelvis drops on the swing side
+        this.rot('spine', lean * 0.5 + breath, sw * 0.12 * A * (1 - aim * 0.7) + aim * -0.25 + gaze * 0.12 + fs * fl * 0.35, -sway * 0.3 * (1 - A) + fs * fl * 0.18);
         this.rot('chest', lean * 0.5 + breath * 1.4 + syl * 0.015 * tk, sw * 0.1 * A * (1 - aim * 0.7) + aim * -0.12 + gaze * 0.15 + Math.sin(t * 1.7) * 0.05 * tk, 0);
         const idleLook = look * (1 - aim) * (1 - A) * (1 - tk);
         this.rot('neck', -lean * 0.3 + nod * 0.4, -sw * 0.05 * A + idleLook * 0.2 + aim * 0.15 + gaze * 0.3, tilt * 0.4);
-        this.rot('head', -lean * 0.25 + aim * 0.05 + nod - bob * 1.5, look * 0.45 * (1 - aim) * (1 - A * 0.7) * (1 - tk) + aim * 0.2 + gaze * 0.45 + sw * 0.07 * A * (1 - aim), tilt - sw * 0.03 * A);   // head counter-rotates against the torso so the gaze stays steady
+        this.rot('head', -lean * 0.25 + aim * 0.05 + nod - bob * 1.5 - fl * 0.25 + this.dead * this.deadVar[0] * 0.35, look * 0.45 * (1 - aim) * (1 - A * 0.7) * (1 - tk) + aim * 0.2 + gaze * 0.45 + sw * 0.07 * A * (1 - aim), tilt - sw * 0.03 * A);   // head counter-rotates against the torso so the gaze stays steady
         const hb = this.rig.bones.hips;
         if (hb) {
             const sc = 1 / this.posScale;
@@ -496,13 +525,15 @@ class Animator {
             const stride = -Math.sin(p) * 0.55 * A * (1 - hurt * 0.5);
             const th = stride * mz - this.crouch * 0.9 + (side === 'L' ? -0.04 : 0.04) * (1 - A);
             const knee = (0.08 + Math.max(0, Math.cos(p - 0.5)) * 0.95 * A * (0.55 + 0.45 * Math.abs(mz)) * (1 - hurt * 0.6)) + this.crouch * 1.5;
-            const foot = Math.sin(p) * 0.25 * A * mz - this.crouch * 0.4;
-            this.rot('u' + side, th * live + this.dead * (side === 'L' ? -0.4 : 0.35), 0, (side === 'L' ? -1 : 1) * stance - stride * mx * 0.7 * live);
-            this.rot('l' + side, knee * live + this.dead * 0.6, 0, 0);
+            const foot = Math.sin(p) * 0.25 * A * mz - this.crouch * 0.4 + this.sSlope * 0.9;   // toes follow the slope
+            const dv = this.deadVar[side === 'L' ? 1 : 2];
+            this.rot('u' + side, th * live + this.dead * ((side === 'L' ? -0.4 : 0.35) + dv * 0.45), 0, (side === 'L' ? -1 : 1) * stance - stride * mx * 0.7 * live + this.dead * dv * 0.25);
+            this.rot('l' + side, knee * live + this.dead * (0.6 + Math.max(0, dv) * 0.9), 0, 0);
             this.rot('f' + side, foot * live, 0, 0);
         };
         legSwing(ph, 'L');
         legSwing(ph + Math.PI, 'R');
+        if (this.groundAt && s.ik && live > 0.6) this._footIK(live);
 
         // ── arms
         const roll = this.rig.armDrop !== undefined ? clamp(1.3 - this.rig.armDrop, 0, 1.3) : (T ? 1.25 : 0.0);   // lower arms to the sides
@@ -526,8 +557,9 @@ class Animator {
             const g = side === 'L' ? gesture : 0;
             const gx = -0.55 * g + Math.sin(t * 2.7) * 0.12 * g;
             const gel = -(0.75 + Math.sin(t * 3.7) * 0.3) * g;
-            this.rot('a' + side, ((x + gx) * live) + this.dead * -0.2 - flinch, (y + 0.3 * g) * live, (z * live) + this.dead * -s * 0.25);
-            this.rot('fA' + side, ((el + gel) * live) - this.dead * 0.3, (side === 'L' ? 0.0 : -0.3) * aim + 0.5 * g, 0);
+            const av = this.deadVar[side === 'L' ? 3 : 0];
+            this.rot('a' + side, ((x + gx) * live) + this.dead * (-0.2 + av * 0.9) - flinch, (y + 0.3 * g) * live + this.dead * av * 0.4, (z * live) + this.dead * -s * (0.25 + Math.abs(av) * 0.9));
+            this.rot('fA' + side, ((el + gel) * live) - this.dead * (0.3 + Math.max(0, -av) * 1.1), (side === 'L' ? 0.0 : -0.3) * aim + 0.5 * g, 0);
             this.rot('h' + side, 0.1 * aim + Math.sin(t * 4.1) * 0.25 * g, 0, -0.4 * g);
         };
         armPose('L', ph);
@@ -564,6 +596,49 @@ class Animator {
                 this._ik('L', target, 1, live);
             } else if (sup && wL > 0.01) this._ik('L', rf.localToWorld(_t1.copy(sup).add(_t2.set(0.03, -0.05, -0.05))), 1, wL);
         }
+    }
+
+    /**
+     * Foot IK: put each foot on the real ground under it (kerbs, rubble, slopes), bend the knee to
+     * reach, and drop the pelvis for the lower foot so the higher leg is not over-stretched.
+     */
+    _footIK(weight) {
+        const root = this.rig.root, hb = this.rig.bones.hips;
+        const fL = this.rig.bones.fL, fR = this.rig.bones.fR;
+        if (!hb || !fL || !fR) return;
+        root.updateMatrixWorld(true);
+        const base = root.position.y;
+        const pL = fL.getWorldPosition(_t9), pR = fR.getWorldPosition(_t10);
+        const oL = clamp(this.groundAt(pL.x, pL.z) - base, -0.45, 0.45), oR = clamp(this.groundAt(pR.x, pR.z) - base, -0.45, 0.45);
+        if (Math.abs(oL) < 0.025 && Math.abs(oR) < 0.025) return;          // flat ground: FK is already right
+        const drop = Math.max(0, -Math.min(oL, oR)) * weight;
+        if (drop > 0.001) { hb.position.y -= drop / this.posScale; root.updateMatrixWorld(true); }
+        const fwd = _t11.set(0, 0, 1).applyQuaternion(root.getWorldQuaternion(_q5));
+        for (const [side, off] of [['L', oL], ['R', oR]]) {
+            const F = this.rig.bones['f' + side];
+            const target = F.getWorldPosition(_t1);
+            target.y += (off + drop) * weight;
+            this._limbIK(this.rig.bones['u' + side], this.rig.bones['l' + side], F, target, fwd, 1);
+        }
+    }
+
+    /** generic two-bone IK (hip-knee-ankle) with the joint bending toward `pole` */
+    _limbIK(A, F, H, target, poleDir, weight) {
+        if (!A || !F || !H) return;
+        const key = A.uuid, len = this._limbLen || (this._limbLen = {});
+        if (!len[key]) len[key] = [A.getWorldPosition(new THREE.Vector3()).distanceTo(F.getWorldPosition(new THREE.Vector3())), F.getWorldPosition(new THREE.Vector3()).distanceTo(H.getWorldPosition(new THREE.Vector3()))];
+        const [a, c] = len[key];
+        const S = A.getWorldPosition(_t3);
+        const toT = _t4.copy(target).sub(S);
+        const dist = clamp(toT.length(), Math.abs(a - c) + 1e-3, a + c - 1e-3);
+        const dir = toT.normalize();
+        const cosA = (a * a + dist * dist - c * c) / (2 * a * dist);
+        const sinA = Math.sqrt(Math.max(0, 1 - cosA * cosA));
+        const pole = _t5.copy(poleDir); pole.addScaledVector(dir, -pole.dot(dir)).normalize();
+        const Edes = _t6.copy(S).addScaledVector(dir, a * cosA).addScaledVector(pole, a * sinA);
+        const Tdes = _t7.copy(S).addScaledVector(dir, dist);
+        aimBone(A, S, F.getWorldPosition(_t8), Edes);
+        aimBone(F, F.getWorldPosition(_t3), H.getWorldPosition(_t8), Tdes);
     }
 
     /** World-space muzzle point of the held weapon. */

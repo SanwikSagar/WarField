@@ -20,12 +20,38 @@ export function initLoaders(renderer) {
 
 export function getKTX2() { return ktx2; }
 
+/**
+ * KHR_materials_transmission glass (Poly Haven scans ship it on lamp / generator / searchlight lenses)
+ * makes three.js render the whole opaque scene a SECOND time into a transmission buffer whenever one
+ * such surface is on screen (~20 ms per frame measured on integrated graphics). A tinted, glossy,
+ * alpha-blended standard material looks the same at game distances, so every loaded model gets one.
+ */
+function stripTransmission(gltf) {
+    const swap = new Map();
+    gltf.scene.traverse(o => {
+        if (!o.isMesh) return;
+        const fix = (m) => {
+            if (!m || !m.isMeshPhysicalMaterial || !(m.transmission > 0)) return m;
+            if (!swap.has(m)) {
+                const s = new THREE.MeshStandardMaterial({
+                    name: m.name, color: m.color, map: m.map, normalMap: m.normalMap, roughness: Math.min(m.roughness, 0.15),
+                    metalness: 0.1, transparent: true, opacity: 0.32, depthWrite: false, envMapIntensity: 1.2, side: m.side
+                });
+                swap.set(m, s); m.dispose();
+            }
+            return swap.get(m);
+        };
+        o.material = Array.isArray(o.material) ? o.material.map(fix) : fix(o.material);
+    });
+    return gltf;
+}
+
 export function makeGLTFLoader() {
     const l = new GLTFLoader();
     if (draco) l.setDRACOLoader(draco);
     if (ktx2) l.setKTX2Loader(ktx2);
     const load = l.loadAsync.bind(l);
-    l.loadAsync = (url, onProgress) => assetStream.request(`model:${url}`, () => load(url, onProgress), 5);
+    l.loadAsync = (url, onProgress) => assetStream.request(`model:${url}`, () => load(url, onProgress).then(stripTransmission), 5);
     return l;
 }
 

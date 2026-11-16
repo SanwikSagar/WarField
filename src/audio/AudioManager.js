@@ -73,7 +73,7 @@ export class AudioManager {
             step_grass: 4, step_gravel: 3, step_snow: 2, step_concrete: 3, impact_dirt: 1, impact_metal: 2, impact_concrete: 1, impact_flesh: 1,
             explosion: 2, grunt: 1, whiz: 2, radio_on: 2, radio_off: 2, radio_static: 1, ui_hover: 1, ui_select: 1, ui_back: 1,
             whoosh: 2, boom: 1, sting: 1,
-            thunder: 4, bird: 2, crow: 2, wind_gust: 2, creak: 2, distant_blast: 2 };
+            fire_loop: 2, fire_whoosh: 1, debris: 1, metal_clang: 1, thunder: 4, bird: 2, crow: 2, wind_gust: 2, creak: 2, distant_blast: 2 };
         await Promise.all(Object.entries(list).map(async ([name, n]) => {
             const bufs = [];
             for (let i = 0; i < n; i++) {
@@ -233,6 +233,51 @@ export class AudioManager {
         this._eventTimers = [];
     }
 
+    /** Keep the 3D audio listener on the active camera (call every frame). */
+    setListener(camera) {
+        if (!this.ready || !this.ctx || !this.ctx.listener) return;
+        const L = this.ctx.listener, t = this.ctx.currentTime;
+        camera.updateWorldMatrix(true, false);
+        const e = camera.matrixWorld.elements;
+        const set = (param, v) => { if (param) param.setTargetAtTime(v, t, 0.03); };
+        set(L.positionX, e[12]); set(L.positionY, e[13]); set(L.positionZ, e[14]);
+        set(L.forwardX, -e[8]); set(L.forwardY, -e[9]); set(L.forwardZ, -e[10]);
+        set(L.upX, e[4]); set(L.upY, e[5]); set(L.upZ, e[6]);
+    }
+
+    /**
+     * Positional crackle of the nearest fire (recorded CC0 loop through a 3D panner).
+     * pos = THREE.Vector3 or null to fade out; size scales loudness.
+     */
+    setFireLoop(pos, size = 1) {
+        if (!this.ready || !this.ctx) return;
+        const t = this.ctx.currentTime;
+        if (!this._fire) {
+            const bufs = this.samples && this.samples.fire_loop;
+            if (!pos || !bufs || !bufs.length) return;
+            const src = this.ctx.createBufferSource(); src.buffer = bufs[0]; src.loop = true;
+            const gain = this.ctx.createGain(); gain.gain.value = 0;
+            const pan = this.ctx.createPanner();
+            pan.panningModel = 'HRTF'; pan.distanceModel = 'inverse'; pan.refDistance = 2.5; pan.maxDistance = 60; pan.rolloffFactor = 1.5;
+            src.connect(pan); pan.connect(gain); gain.connect(this.buses.sfx);
+            src.start(0, Math.random() * bufs[0].duration);
+            this._fire = { src, gain, pan };
+        }
+        const f = this._fire;
+        if (pos) {
+            f.pan.positionX.setTargetAtTime(pos.x, t, 0.05); f.pan.positionY.setTargetAtTime(pos.y, t, 0.05); f.pan.positionZ.setTargetAtTime(pos.z, t, 0.05);
+            f.gain.gain.setTargetAtTime(Math.min(1.6, 0.7 + size * 0.35), t, 0.4);
+        } else f.gain.gain.setTargetAtTime(0, t, 0.5);
+    }
+
+    playFireWhoosh(volume = 0.6) { if (this.ready) this._playSample('fire_whoosh', { gain: volume, reverb: 0.2 }); }
+    /** Falling masonry / twisted metal for damage events. */
+    playDebris(volume = 0.6, pan = 0) {
+        if (!this.ready) return;
+        this._playSample('debris', { gain: volume, pan, dist: 0.3, reverb: 0.4 });
+        this._playSample('metal_clang', { gain: volume * 0.6, pan, dist: 0.3, reverb: 0.4, delay: 0.15 });
+    }
+
     /** Explosion: big low noise burst with long tail. */
     playExplosion(volume = 1.0) {
         if (!this.ready) return;
@@ -387,24 +432,20 @@ const AMBIENT_EVENTS = {
     ],
     dustland: [
         { sample: 'wind_gust', every: [14, 30], gain: 0.5, dist: 0.2, reverb: 0.1 },
-        { sample: 'distant_blast', every: [35, 70], gain: 0.55, dist: 0.85, reverb: 0.6 },
         { sample: 'crow', every: [30, 60], gain: 0.4, dist: 0.6 },
         { sample: 'creak', every: [25, 50], gain: 0.3, dist: 0.5 }
     ],
     frostland: [
         { sample: 'wind_gust', every: [10, 22], gain: 0.7, dist: 0.15, reverb: 0.1 },
         { sample: 'creak', every: [18, 40], gain: 0.4, dist: 0.4 },
-        { sample: 'distant_blast', every: [60, 110], gain: 0.4, dist: 0.95, reverb: 0.7 }
     ],
     deadzone: [
         { sample: 'distant', every: [10, 24], gain: 0.5, dist: 0.8, reverb: 0.5 },
-        { sample: 'distant_blast', every: [28, 60], gain: 0.6, dist: 0.8, reverb: 0.6 },
         { sample: 'creak', every: [16, 34], gain: 0.4, dist: 0.4 },
         { sample: 'wind_gust', every: [20, 40], gain: 0.35, dist: 0.2 }
     ],
     city: [
         { sample: 'distant', every: [7, 18], gain: 0.55, dist: 0.7, reverb: 0.7 },
-        { sample: 'distant_blast', every: [24, 50], gain: 0.65, dist: 0.8, reverb: 0.8 },
         { sample: 'crow', every: [18, 40], gain: 0.45, dist: 0.5, reverb: 0.5 },
         { sample: 'creak', every: [14, 30], gain: 0.4, dist: 0.4, reverb: 0.5 },
         { sample: 'wind_gust', every: [20, 40], gain: 0.3, dist: 0.2 }

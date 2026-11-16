@@ -1,6 +1,7 @@
 import { globalEvents } from '../core/EventManager.js';
 import { MISSIONS } from '../environments/biomes.js';
 import { saveManager } from '../save/SaveManager.js';
+import { cloud } from '../save/CloudSave.js';
 import { SEASON, RECAPS, UPCOMING, formatRelease, latestEpisode, isNewEpisode, nextEpisode, countdownTo } from '../story/Story.js';
 
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -41,6 +42,8 @@ export class MainMenu {
         this._bind();
         this._refreshContinue();
         this._renderFeature();
+        this._buildTicker();
+        this._renderPlayer(); cloud.on(() => this._renderPlayer());
         setInterval(() => { if (this.currentScreen === 'menu') this._renderCountdown(); }, 30000);
         this.selectedIndex = this._firstEnabled();
         this.show('menu');
@@ -149,6 +152,46 @@ export class MainMenu {
 
     _highlight() {
         this.menuItems.forEach((it, i) => it.classList.toggle('selected', i === this.selectedIndex));
+        // one line telling the player what the highlighted option does
+        const item = this.menuItems[this.selectedIndex], d = document.getElementById('menu-desc');
+        if (!item || !d) return;
+        const latest = MISSIONS[MISSIONS.length - 1];
+        const cur = saveManager.hasSave ? MISSIONS.find(x => x.id === saveManager.campaign.currentMission) : null;
+        const text = {
+            continue: cur ? `Pick up Episode ${cur.code}, ${cur.title}, where you left off.` : 'No campaign in progress yet.',
+            missions: `Replay any of the ${MISSIONS.length} released episodes. Newest: ${latest.title}.`,
+            new: 'Start Season 1 from the first episode. Choose your difficulty on the briefing screen.',
+            settings: 'Graphics, frame-rate limit, controls, aim assist, audio and accessibility.',
+            credits: 'The people and CC0 libraries behind the art, sound and models.',
+            exit: 'Leave Warfield. Your progress is saved automatically.'
+        }[item.dataset.action] || '';
+        if (d.textContent !== text) { d.classList.remove('in'); void d.offsetWidth; d.textContent = text; d.classList.add('in'); }
+    }
+
+    /** Footer: player ID + cloud save state, so the player can see their progress is safe. */
+    _renderPlayer() {
+        const el = document.getElementById('footer-player');
+        if (!el) return;
+        const state = { off: '', idle: '', connecting: 'CONNECTING', syncing: 'SYNCING', synced: 'CLOUD SAVED', offline: 'OFFLINE', error: 'SYNC ERROR' }[cloud.status] || '';
+        el.innerHTML = `ID ${saveManager.player.id}${state ? ` · <span class="fp-${cloud.status}">${state}</span>` : ''}<i></i>`;
+    }
+
+    /** Scrolling intel feed under the menu (story-consistent radio / news chatter). */
+    _buildTicker() {
+        const run = document.getElementById('mt-run');
+        if (!run || run.childElementCount) return;
+        const lines = [
+            'VEYRA CITY: City Guard holds the market district for a third night',
+            'Broadcast restored across Varencia after midnight blackout attempt',
+            'Victor Kane held at an undisclosed military site',
+            'Loyalist units jamming civilian radio on the old military band',
+            'Field hospitals report shortages of blood and morphine',
+            'Unconfirmed transmission on 41.7 MHz repeats a single name',
+            'Frostland ridge still closed after installation explosion',
+            'Evacuation corridors open north of the river checkpoint'
+        ];
+        const html = lines.map(l => `<span class="mt-item">${l}</span>`).join('');
+        run.innerHTML = html + html;          // doubled for a seamless loop
     }
 
     _refreshContinue() {

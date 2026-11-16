@@ -24,6 +24,13 @@ import { RGBELoader } from '/node_modules/three/examples/jsm/loaders/RGBELoader.
 const CAM_POS = new THREE.Vector3(0, 1.26, 0);
 const CAM_LOOK = new THREE.Vector3(0.2, 1.78, -10);
 const CAM_FOV = 40;
+// slow cinematic coverage of the outpost: each shot holds ~10 s with a gentle dolly, then eases into the next
+const SHOTS = [
+    { pos: [0.25, 1.32, 1.05], look: [0.2, 1.72, -10], dolly: [0, 0, -0.35] },     // over the shoulder, pulled back
+    { pos: [-1.7, 1.95, 2.2], look: [1.1, 1.45, -10], dolly: [0.45, 0, -0.2] },     // wide, drifting right across the camp
+    { pos: [1.35, 1.5, 1.7], look: [-1.8, 1.25, -9], dolly: [-0.3, 0, -0.25] }       // from the right, across the soldier toward the camp
+];
+const SHOT_HOLD = 10, SHOT_BLEND = 4;
 const FOG_COLOR = 0x4a5868;
 const SEAT_Y = 0.88;   // table top the hero sits on
 
@@ -1121,12 +1128,19 @@ export class MenuScene {
         const k = 1 - Math.exp(-dt * 2.2);
         this.parallax.x += (this.mouse.x - this.parallax.x) * k;
         this.parallax.y += (this.mouse.y - this.parallax.y) * k;
+        // which shot, how far into it, and the eased blend toward the next one
+        const cycle = SHOT_HOLD + SHOT_BLEND, si = Math.floor(t / cycle) % SHOTS.length, local = t % cycle;
+        const A = SHOTS[si], B = SHOTS[(si + 1) % SHOTS.length];
+        const bl = local < SHOT_HOLD ? 0 : (x => x * x * (3 - 2 * x))((local - SHOT_HOLD) / SHOT_BLEND);
+        const pa = Math.min(1, local / cycle), pb = Math.max(0, (local - SHOT_HOLD) / cycle);
+        const P = (i) => A.pos[i] + A.dolly[i] * pa + (B.pos[i] + B.dolly[i] * pb - A.pos[i] - A.dolly[i] * pa) * bl;
+        const Lk = (i) => A.look[i] + (B.look[i] - A.look[i]) * bl;
         camera.position.set(
-            CAM_POS.x + Math.sin(t * 0.23) * 0.035 + Math.sin(t * 0.61) * 0.012 + this.parallax.x * 0.12,
-            CAM_POS.y + Math.sin(t * 0.31) * 0.02 + Math.sin(t * 0.9) * 0.006 - this.parallax.y * 0.05,
-            CAM_POS.z + Math.sin(t * 0.17) * 0.05
+            P(0) + Math.sin(t * 0.23) * 0.035 + Math.sin(t * 0.61) * 0.012 + this.parallax.x * 0.12,
+            P(1) + Math.sin(t * 0.31) * 0.02 + Math.sin(t * 0.9) * 0.006 - this.parallax.y * 0.05,
+            P(2) + Math.sin(t * 0.17) * 0.05
         );
-        camera.lookAt(CAM_LOOK.x + Math.sin(t * 0.19) * 0.12 + this.parallax.x * 0.35, CAM_LOOK.y + Math.sin(t * 0.27) * 0.06 - this.parallax.y * 0.18, CAM_LOOK.z);
+        camera.lookAt(Lk(0) + Math.sin(t * 0.19) * 0.12 + this.parallax.x * 0.35, Lk(1) + Math.sin(t * 0.27) * 0.06 - this.parallax.y * 0.18, Lk(2));
         this.sky.position.copy(camera.position);
 
         // lightning

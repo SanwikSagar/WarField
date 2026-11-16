@@ -1,0 +1,345 @@
+[
+ {
+  "file": "truck.glb",
+  "title": "Truck",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/cXw6oiFtZ8"
+ },
+ {
+  "file": "pickup.glb",
+  "title": "Pickup Truck",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/qn4grQgHm8"
+ },
+ {
+  "file": "pickup_armored.glb",
+  "title": "Pickup Truck Armored",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/RUwMItmU4B"
+ },
+ {
+  "file": "suv.glb",
+  "title": "SUV",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/xsMtZhBkxL"
+ },
+ {
+  "file": "police.glb",
+  "title": "Police Car",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/BwwnUrWGmV"
+ },
+ {
+  "file": "rover.glb",
+  "title": "Rover",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/WRd1piJOfh"
+ },
+ {
+  "file": "tank.glb",
+  "title": "Tank",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/Dc4k4CooN3"
+ },
+ {
+  "file": "wagon.glb",
+  "title": "Stationwagon",
+  "author": "Kay Lousberg",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/vTTTjDoxhV"
+ },
+ {
+  "file": "hatchback.glb",
+  "title": "Car Hatchback",
+  "author": "Kay Lousberg",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/BG0KAhmGDt"
+ },
+ {
+  "file": "sports.glb",
+  "title": "Sports Car",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/1mkmFkAz5v"
+ },
+ {
+  "file": "helicopter.glb",
+  "title": "Helicopter",
+  "author": "kazuma",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/EQJ2MECUbx"
+ },
+ {
+  "file": "sack_trench.glb",
+  "title": "Sack Trench",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/LW3jwpPfiN"
+ },
+ {
+  "file": "sack_trench_small.glb",
+  "title": "Sack Trench Small",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/iHyRewQQcN"
+ },
+ {
+  "file": "bags.glb",
+  "title": "Bags",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/gzvyAQ797z"
+ },
+ {
+  "file": "watchtower.glb",
+  "title": "Watch Tower",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/cMxuj2gt7D"
+ },
+ {
+  "file": "watchtower_small.glb",
+  "title": "Watch Tower",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/f2J0aSLVi4"
+ },
+ {
+  "file": "tent.glb",
+  "title": "Tent",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/5Q7qIrfDxA"
+ },
+ {
+  "file": "barracks.glb",
+  "title": "Barracks",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/puD1kbV4kf"
+ },
+ {
+  "file": "barricade.glb",
+  "title": "Barricade",
+  "author": "iPoly3D",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/FKPty4JRap"
+ },
+ {
+  "file": "barrier_large.glb",
+  "title": "Barrier Large",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/gLbBiYwt7l"
+ },
+ {
+  "file": "traffic_barrier.glb",
+  "title": "Traffic Barrier",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/cM3aJPU9NS"
+ },
+ {
+  "file": "barrier_single.glb",
+  "title": "Barrier Single",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/wCUxgt2jSP"
+ },
+ {
+  "file": "debris_pile.glb",
+  "title": "Debris Pile",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/WrIiMMxyEP"
+ },
+ {
+  "file": "bricks.glb",
+  "title": "Bricks",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/Tvlvh8AAbs"
+ },
+ {
+  "file": "rocks.glb",
+  "title": "Rocks",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/gYhoEOKItJ"
+ },
+ {
+  "file": "cannon.glb",
+  "title": "Cannon",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/qIAvoaawib"
+ },
+ {
+  "file": "turret_gun.glb",
+  "title": "Turret Gun",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/hThPXDCbwl"
+ },
+ {
+  "file": "antenna.glb",
+  "title": "Antenna",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/OuHQCigiUR"
+ },
+ {
+  "file": "transmission_tower.glb",
+  "title": "Transmission Tower",
+  "author": "iPoly3D",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/Xfb0lAPvnh"
+ },
+ {
+  "file": "bonfire.glb",
+  "title": "Bonfire",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/Azj9hJwwwG"
+ },
+ {
+  "file": "barrel.glb",
+  "title": "Barrel",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/MraIiFnpAY"
+ },
+ {
+  "file": "barrel2.glb",
+  "title": "Barrel",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/zjCQP1TAci"
+ },
+ {
+  "file": "exploding_barrel.glb",
+  "title": "Exploding Barrel",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/1orHe0kCc1"
+ },
+ {
+  "file": "propane.glb",
+  "title": "Propane Tank",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/3revwBHxDC"
+ },
+ {
+  "file": "pallet_broken.glb",
+  "title": "Pallet Broken",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/Gp43iUyyAX"
+ },
+ {
+  "file": "wall_broken.glb",
+  "title": "Wall",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/CkF171SeTV"
+ },
+ {
+  "file": "dumpster.glb",
+  "title": "Dumpster",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/PKsbolkZSr"
+ },
+ {
+  "file": "trash_container.glb",
+  "title": "Trash Container Open",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/IvvdNqXmAW"
+ },
+ {
+  "file": "trashbags.glb",
+  "title": "Trash Bags",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/eitNk4I4R1"
+ },
+ {
+  "file": "traffic_light.glb",
+  "title": "Traffic Light",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/apWcPbwhlq"
+ },
+ {
+  "file": "street_light.glb",
+  "title": "Street Light",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/nFwrlcLvM5"
+ },
+ {
+  "file": "tires.glb",
+  "title": "Tires",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/mmq7GmG1AK"
+ },
+ {
+  "file": "crate_a.glb",
+  "title": "Crate",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/3VGWnZPXmG"
+ },
+ {
+  "file": "crate_b.glb",
+  "title": "Crate",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/oTD0P0yGLG"
+ },
+ {
+  "file": "ruins.glb",
+  "title": "Modular Ruins Pack",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/F2LAK03B0r"
+ },
+ {
+  "file": "wall_modular.glb",
+  "title": "Wall Modular",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/itasw0GWNf"
+ },
+ {
+  "file": "civ_man.glb",
+  "title": "Casual Character",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/kZ3DmIoGip"
+ },
+ {
+  "file": "civ_woman.glb",
+  "title": "Woman Casual",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/jpKRgGDxhk"
+ },
+ {
+  "file": "civ_man2.glb",
+  "title": "Man",
+  "author": "Quaternius",
+  "licence": "CC0 1.0",
+  "url": "https://poly.pizza/m/HMnuH5geEG"
+ }
+]

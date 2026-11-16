@@ -87,7 +87,8 @@ export const SCRIPT = {
         cinematicBeats: [2],
         intro: [
             { speaker: 'MAYA', text: 'Supply convoy runs this route in ten minutes. We watch, we learn.' },
-            { speaker: 'ETHAN', text: 'Heat\'s playing tricks out here. Keep your water close.' }
+            { speaker: 'ETHAN', text: 'Heat\'s playing tricks out here. Keep your water close.' },
+            { speaker: 'HAYES', text: 'If that convoy is carrying what I think it is, somebody wants this war to keep burning.' }
         ],
         start: [{ speaker: 'HAYES', text: 'Eyes on the road, Mercer.' }],
         objectives: {
@@ -115,6 +116,7 @@ export const SCRIPT = {
             { speaker: 'HAYES', text: 'I\'m on the ridge with overwatch. You two are my eyes inside.', radio: true },
             { speaker: 'ETHAN', text: 'Visibility\'s dropping. Stay close, Mercer.' }
         ],
+        start: [{ speaker: 'HAYES', text: 'Mercer, you\'re on point. Thermals show warm bodies inside. Move quiet.', radio: true }],
         objectives: {
             0: [{ speaker: 'HAYES', text: 'Records room should be on the lower level. Maya, get that data.', radio: true }],
             1: [
@@ -146,15 +148,18 @@ export const SCRIPT = {
             ]
         },
         outro: [
-            { speaker: 'HAYES', text: 'Every screen in Varencia goes dark at midnight. Unless we get there first.' }
+            { speaker: 'HAYES', text: 'Every screen in Varencia goes dark at midnight. Unless we get there first.' },
+            { speaker: 'MAYA', text: 'Then we don\'t stop. Not tonight.' }
         ]
     },
     5: {
         cinematicBeats: [1],
         intro: [
             { speaker: 'MAYA', text: 'This is the heart of it. Kane is running Blackout from inside that building.' },
-            { speaker: 'HAYES', text: 'Get Maya to the broadcast array. I\'ll hold the control room.' }
+            { speaker: 'HAYES', text: 'Get Maya to the broadcast array. I\'ll hold the control room.' },
+            { speaker: 'ETHAN', text: 'Midnight in forty minutes. No second chances tonight.' }
         ],
+        start: [{ speaker: 'MAYA', text: 'Main doors are sealed. We breach through the loading dock. Mercer, lead us in.' }],
         objectives: {
             0: [
                 { speaker: 'MAYA', text: 'I\'m in. Upload\'s started. I need time. Defend this position!' },
@@ -170,6 +175,7 @@ export const SCRIPT = {
             ]
         },
         outro: [
+            { speaker: 'MAYA', text: 'He bought us every second we needed. Every last one.' },
             { speaker: 'MERCER', text: 'Some missions are about winning. Others are about what you\'re willing to lose.' }
         ]
     },

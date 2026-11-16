@@ -15,7 +15,8 @@ export const BIOMES = {
     wildlands: {
         id: 'wildlands',
         name: 'Wildlands',
-        grade: { saturation: 0.94, contrast: 1.12, vignette: 0.62 },
+        grade: { saturation: 0.94, contrast: 1.12, vignette: 0.62, tintShadow: [0.93, 1.0, 1.07], tintHigh: [1.03, 1.02, 0.97], bloom: 1.0, shafts: 0.12 },
+        bake: { ao: 0.85, shadow: 0.4, glow: 1.0, wet: 0.85, cloud: 0.2 },
         bounds: 88,
         rim: 15,
         photo: ['forest_ground_04', 'leaves_forest_ground', 'brown_mud_leaves_01', 'brick_wall_003', 'concrete_wall_004', 'corrugated_iron_02', 'rusty_metal_02', 'wood_planks_grey', 'gravel_floor_02'],
@@ -91,11 +92,29 @@ export const BIOMES = {
             { type: 'wall', x: -50, z: -52, w: 1.2, d: 26, h: 3, rot: 0.2 },
             { type: 'wall', x: -6, z: -50, w: 1.2, d: 22, h: 3, rot: -0.1 }
         ],
-        vehicles: [
-            { x: 12, z: -20, rot: 0.6, wrecked: true, color: 0x4a5237 },
-            { x: -26, z: -30, rot: -0.4, wrecked: true, color: 0x4a5237 },
-            { x: 20, z: -48, rot: 1.2, wrecked: false, color: 0x3f4632 }
-        ],
+        vehicles: [],
+        war: {
+            objects: [
+                { id: 'truck', x: 12, z: -20, rot: 0.6, burn: 1, fire: 1.8 },
+                { id: 'pickup_armored', x: -26, z: -30, rot: -0.4, burn: 0.8, fire: 1.2 },
+                { id: 'rover', x: 20, z: -48, rot: 1.2, burn: 0.15 },
+                { id: 'helicopter', x: 32, z: -36, rot: 2.1, burn: 1, fire: 2.4 },
+                { id: 'sack_trench', x: -16, z: -26, rot: 0.3 },
+                { id: 'tent', x: -40, z: -30, rot: 0.2 },
+                { id: 'tent', x: -44, z: -22, rot: 1 },
+                { id: 'watchtower_small', x: -46, z: -56, rot: 0.5 },
+                { id: 'barrel2', x: -33, z: -29, rot: 0 },
+                { id: 'barrel2', x: -33.9, z: -29.6, rot: 1 },
+                { id: 'debris_pile', x: 6, z: -12, rot: 0.4, burn: 0.6 },
+                { id: 'bricks', x: 8, z: -9, rot: 1.2 },
+                { id: 'antenna', x: -38, z: -64, rot: 0 },
+                { id: 'cannon', x: 4, z: -34, rot: -0.6, burn: 0.4 }
+            ],
+            craters: [{ x: 8, z: -8, r: 4 }, { x: -34, z: -12, r: 4.5, fire: true }, { x: 22, z: 6, r: 3.5 }],
+            fires: [{ x: -36, z: -27, size: 0.9, smoke: 0.5 }, { x: -33, z: -29.3, size: 0.8 }],
+            columns: [{ x: 70, z: -70, width: 16 }, { x: -74, z: -40, width: 14 }],
+            blasts: [35, 70]
+        },
         props: [
             { type: 'crate', x: -30, z: -48 }, { type: 'crate', x: -28, z: -47 },
             { type: 'barrel', x: -16, z: -56, color: 0x7a3b2e },
@@ -144,7 +163,8 @@ export const BIOMES = {
     dustland: {
         id: 'dustland',
         name: 'Dustland',
-        grade: { saturation: 1.02, contrast: 1.1, vignette: 0.5 },
+        grade: { saturation: 1.02, contrast: 1.1, vignette: 0.5, tintShadow: [0.97, 0.98, 1.04], tintHigh: [1.08, 1.02, 0.9], bloom: 1.1, shafts: 0.4 },
+        bake: { ao: 0.7, shadow: 0.55, glow: 1.0, wet: 0.02, cloud: 0.5 },
         bounds: 100,
         rim: 11,
         photo: ['sand_01', 'brick_wall_003', 'concrete_wall_004', 'corrugated_iron_02', 'rusty_metal_02', 'wood_planks_grey', 'gravel_floor_02'],
@@ -194,12 +214,33 @@ export const BIOMES = {
             { type: 'wall', x: 20, z: -55, w: 1.2, d: 30, h: 3.5 },
             { type: 'wall', x: 40, z: -40, w: 40, d: 1.2, h: 3.5 }
         ],
-        vehicles: [
-            { x: -10, z: -10, rot: 0.2, wrecked: true, color: 0x8a7a55 },
-            { x: -4, z: -18, rot: -0.3, wrecked: true, color: 0x8a7a55 },
-            { x: 4, z: -6, rot: 0.5, wrecked: true, color: 0x7a6a48 },
-            { x: 30, z: -50, rot: 0, wrecked: false, color: 0x8a7a55 }
-        ],
+        vehicles: [],
+        war: {
+            objects: [
+                { id: 'truck', x: -10, z: -10, rot: 0.2, burn: 1, fire: 1.8 },
+                { id: 'truck', x: -4, z: -18, rot: -0.3, burn: 0.9, fire: 1.4 },
+                { id: 'pickup_armored', x: 4, z: -6, rot: 0.5, burn: 0.8, fire: 1.1 },
+                { id: 'truck', x: 30, z: -50, rot: 0, burn: 0.2 },
+                { id: 'tank', x: 16, z: -24, rot: 0.4, burn: 0.9, fire: 2.2 },
+                { id: 'helicopter', x: -32, z: -34, rot: 1.2, burn: 1, fire: 2 },
+                { id: 'sack_trench', x: -20, z: -2, rot: 0.1 },
+                { id: 'tent', x: 24, z: -2, rot: 0.3 },
+                { id: 'tent', x: 29, z: 6, rot: -0.4 },
+                { id: 'watchtower', x: -42, z: -20, rot: 0 },
+                { id: 'antenna', x: 26, z: -30, rot: 0 },
+                { id: 'transmission_tower', x: -62, z: -32, rot: 0 },
+                { id: 'barracks', x: 54, z: 12, rot: 0.1 },
+                { id: 'barrel', x: -7, z: -14, rot: 0 },
+                { id: 'exploding_barrel', x: -6, z: -13.2, rot: 0.5, burn: 0.3 },
+                { id: 'debris_pile', x: 0, z: -12, rot: 0.5, burn: 0.7 },
+                { id: 'cannon', x: -14, z: -26, rot: 0.8, burn: 0.5 },
+                { id: 'wall_broken', x: 10, z: -36, rot: 0.2, burn: 0.4 }
+            ],
+            craters: [{ x: -2, z: -2, r: 4 }, { x: 8, z: -30, r: 5, fire: true }, { x: -24, z: -14, r: 4 }, { x: 46, z: -26, r: 4 }],
+            fires: [{ x: -7, z: -14, size: 1.1, smoke: 1 }, { x: 24, z: 3, size: 0.8 }],
+            columns: [{ x: -80, z: -70, width: 16 }, { x: 80, z: -60, width: 14 }, { x: 0, z: -95, width: 18 }],
+            blasts: [25, 55]
+        },
         props: [
             { type: 'container', x: 44, z: -48, rot: 0, color: 0xa5552f },
             { type: 'container', x: 50, z: -48, rot: 0, color: 0x3f5d4a },
@@ -235,7 +276,8 @@ export const BIOMES = {
     frostland: {
         id: 'frostland',
         name: 'Frostland',
-        grade: { saturation: 0.86, contrast: 1.12, vignette: 0.55 },
+        grade: { saturation: 0.86, contrast: 1.12, vignette: 0.55, tintShadow: [0.92, 0.98, 1.1], tintHigh: [1.0, 1.02, 1.06], bloom: 1.2, shafts: 0.15 },
+        bake: { ao: 0.7, shadow: 0.35, glow: 1.0, wet: 0.25, cloud: 0.25 },
         bounds: 90,
         rim: 17,
         photo: ['snow_02', 'brick_wall_003', 'concrete_wall_004', 'corrugated_iron_02', 'rusty_metal_02', 'wood_planks_grey', 'gravel_floor_02'],
@@ -282,10 +324,28 @@ export const BIOMES = {
             { type: 'wall', x: -34, z: -56, w: 1.2, d: 24, h: 3 },
             { type: 'wall', x: 12, z: -50, w: 1.2, d: 26, h: 3 }
         ],
-        vehicles: [
-            { x: -14, z: -30, rot: 0.4, wrecked: true, color: 0x6a747e },
-            { x: 10, z: -44, rot: -0.6, wrecked: false, color: 0x7a848e }
-        ],
+        vehicles: [],
+        war: {
+            objects: [
+                { id: 'pickup_armored', x: -14, z: -30, rot: 0.4, burn: 0.7, fire: 1.2 },
+                { id: 'rover', x: 10, z: -44, rot: -0.6, burn: 0.15 },
+                { id: 'tank', x: -30, z: -20, rot: 0.3, burn: 0.85, fire: 1.6 },
+                { id: 'tent', x: 14, z: 18, rot: 0.5 },
+                { id: 'sack_trench', x: -8, z: 16, rot: 0.1 },
+                { id: 'watchtower', x: 30, z: -30, rot: 0 },
+                { id: 'antenna', x: -40, z: -40, rot: 0 },
+                { id: 'barrel2', x: -20, z: -38, rot: 0 },
+                { id: 'barrel2', x: -19.1, z: -38.6, rot: 1 },
+                { id: 'bonfire', x: 16, z: -4, rot: 0 },
+                { id: 'debris_pile', x: -4, z: -14, rot: 0.8, burn: 0.5 },
+                { id: 'truck', x: 24, z: -12, rot: 1.7, burn: 0.9, fire: 1.5 },
+                { id: 'barrier_large', x: -6, z: 30, rot: 1.5 }
+            ],
+            craters: [{ x: -4, z: -14, r: 4 }, { x: 12, z: -22, r: 3.5 }, { x: -28, z: -36, r: 4, fire: true }],
+            fires: [{ x: 16, z: -4, size: 1, smoke: 0.6 }, { x: -20, z: -38, size: 1.1, smoke: 1 }],
+            columns: [{ x: -70, z: -60, width: 14 }, { x: 60, z: -70, width: 14 }],
+            blasts: [45, 90]
+        },
         props: [
             { type: 'crate', x: -22, z: -44 }, { type: 'crate', x: -20, z: -43 },
             { type: 'barrel', x: 2, z: -52, color: 0x5a6a7a },
@@ -319,7 +379,8 @@ export const BIOMES = {
     deadzone: {
         id: 'deadzone',
         name: 'Deadzone',
-        grade: { saturation: 0.9, contrast: 1.14, vignette: 0.6 },
+        grade: { saturation: 0.9, contrast: 1.14, vignette: 0.6, tintShadow: [0.96, 0.98, 1.03], tintHigh: [1.04, 1.01, 0.96], bloom: 1.0 },
+        bake: { ao: 0.95, shadow: 0.45, glow: 1.0, wet: 0.5, cloud: 0.2 },
         buildingPhoto: 'red_brick_03', brickColor: 0xe6dcd0,
         groundMud: 'concrete_floor_worn_001', groundLitter: 'asphalt_02',
         bounds: 92,
@@ -375,12 +436,37 @@ export const BIOMES = {
             { type: 'wall', x: -10, z: -50, w: 30, d: 1.2, h: 4 },
             { type: 'wall', x: 14, z: -50, w: 1.2, d: 20, h: 4 }
         ],
-        vehicles: [
-            { x: -8, z: -10, rot: 0.8, wrecked: true, color: 0x5a5852 },
-            { x: 6, z: -16, rot: -0.5, wrecked: true, color: 0x4a4842 },
-            { x: -20, z: -48, rot: 0.2, wrecked: true, color: 0x5a5852 },
-            { x: 18, z: -52, rot: -0.3, wrecked: false, color: 0x4a5237 }
-        ],
+        vehicles: [],
+        war: {
+            objects: [
+                { id: 'pickup_armored', x: -8, z: -10, rot: 0.8, burn: 1, fire: 1.6 },
+                { id: 'ambulance', x: 14, z: 6, rot: 2.6, burn: 0.85, fire: 0.9 },     // ambushed medevac
+                { id: 'truck', x: 6, z: -16, rot: -0.5, burn: 0.9, fire: 1.4 },
+                { id: 'pickup', x: -20, z: -48, rot: 0.2, burn: 1, fire: 1.2 },
+                { id: 'rover', x: 18, z: -52, rot: -0.3, burn: 0.2 },
+                { id: 'tank', x: 12, z: -26, rot: -0.5, burn: 0.9, fire: 2.1 },
+                { id: 'sack_trench', x: -4, z: -34, rot: 0 },
+                { id: 'barrier_large', x: -17, z: -40, rot: 0.1 },
+                { id: 'barrier_large', x: 17, z: -40, rot: -0.1 },
+                { id: 'turret_gun', x: -6, z: -44, rot: 0.2 },
+                { id: 'turret_gun', x: 6, z: -44, rot: -0.2 },
+                { id: 'watchtower', x: -52, z: -30, rot: 0 },
+                { id: 'debris_pile', x: -24, z: -24, rot: 0.3, burn: 0.7 },
+                { id: 'debris_pile', x: 27, z: -28, rot: 1.2, burn: 0.7 },
+                { id: 'debris_pile', x: 33, z: 3, rot: 0.6, burn: 0.7 },
+                { id: 'debris_pile', x: -28, z: 10, rot: 2, burn: 0.7 },
+                { id: 'wall_broken', x: -8, z: -30, rot: 0.1, burn: 0.5 },
+                { id: 'wall_broken', x: 8, z: -32, rot: -0.2, burn: 0.5 },
+                { id: 'barrel2', x: -24, z: -20, rot: 0 },
+                { id: 'barrel2', x: 10, z: -28, rot: 1 },
+                { id: 'dumpster', x: -14, z: -18, rot: 0.2 },
+                { id: 'trash_container', x: 16, z: -10, rot: 1.6 }
+            ],
+            craters: [{ x: 0, z: -8, r: 4 }, { x: -14, z: -18, r: 3.5, fire: true }, { x: 22, z: -8, r: 4 }, { x: -30, z: -12, r: 4 }],
+            fires: [{ x: -24, z: -20, size: 1.1, smoke: 1 }, { x: 10, z: -28, size: 1.1, smoke: 1 }, { x: -14, z: -18, size: 0.7 }],
+            columns: [{ x: -80, z: -60, width: 18 }, { x: 80, z: -80, width: 18 }, { x: 0, z: -95, width: 20 }],
+            blasts: [18, 40]
+        },
         props: [
             { type: 'container', x: -24, z: -46, rot: 0.3, color: 0xa5552f },
             { type: 'crate', x: 0, z: -56 }, { type: 'crate', x: 2, z: -55 },
@@ -423,7 +509,8 @@ export const BIOMES = {
     city: {
         id: 'city',
         name: 'Veyra City',
-        grade: { saturation: 1.08, contrast: 1.1, vignette: 0.5 },
+        grade: { saturation: 1.04, contrast: 1.1, vignette: 0.5, tintShadow: [0.95, 0.98, 1.06], tintHigh: [1.07, 1.0, 0.92], bloom: 1.0, shafts: 0.5 },
+        bake: { ao: 0.95, shadow: 0.6, glow: 1.0, wet: 0.55, cloud: 0.3 },
         bounds: 78,
         rim: 2,
         photo: ['asphalt_02', 'brick_wall_003', 'concrete_wall_004', 'corrugated_iron_02', 'rusty_metal_02', 'wood_planks_grey', 'gravel_floor_02',
@@ -562,17 +649,17 @@ export const BIOMES = {
             // south row (start)
             { type: 'block', x: -21, z: 52, w: 18, d: 24, h: 14, style: 'apartment' },
             { type: 'block', x: 21, z: 50, w: 16, d: 22, h: 17, style: 'apartment' },
-            { type: 'block', x: -45, z: 54, w: 18, d: 22, h: 20, style: 'office' },
+            { type: 'block', x: -45, z: 54, w: 18, d: 22, h: 20, style: 'office', burn: { n: 2, size: 2.2 } },
             { type: 'block', x: 45, z: 52, w: 18, d: 24, h: 11, style: 'apartment' },
             // market district
-            { type: 'block', x: -21, z: 8, w: 18, d: 22, h: 23, style: 'apartment' },
-            { type: 'block', x: 21, z: 8, w: 18, d: 20, h: 26, style: 'office' },
+            { type: 'block', x: -21, z: 8, w: 18, d: 22, h: 23, style: 'apartment', burn: { n: 4, size: 2.4 } },
+            { type: 'block', x: 21, z: 8, w: 18, d: 20, h: 26, style: 'office', burn: { n: 3, size: 2.6 } },
             { type: 'block', x: -45, z: 6, w: 18, d: 20, h: 14, style: 'apartment' },
             { type: 'block', x: 45, z: 8, w: 16, d: 22, h: 18, style: 'office' },
             // west block: civilians shelter in the low brick hall
             { type: 'building', x: -40, z: -31, w: 12, d: 10, h: 5, rot: 0 },
             { type: 'block', x: -20, z: -33, w: 14, d: 18, h: 17, style: 'apartment' },
-            { type: 'block', x: 22, z: -31, w: 18, d: 20, h: 20, style: 'office' },
+            { type: 'block', x: 22, z: -31, w: 18, d: 20, h: 20, style: 'office', burn: { n: 3, size: 2.4 } },
             { type: 'block', x: 46, z: -33, w: 14, d: 18, h: 13, style: 'apartment' },
             // checkpoint plaza
             { type: 'block', x: -34, z: -66, w: 22, d: 12, h: 11, style: 'apartment' },
@@ -589,6 +676,42 @@ export const BIOMES = {
             { type: 'block', x: 68, z: 46, w: 14, d: 28, h: 12, style: 'apartment' }
         ],
         vehicles: [],
+        war: {
+            objects: [
+                { id: 'ambulance', x: 9, z: -67, rot: 1.57, burn: 0, dirt: 0.4 },          // casualty point at the north checkpoint
+                { id: 'suv', x: -6, z: 24, rot: 1.4, burn: 1, fire: 1.5 },
+                { id: 'hatchback', x: 8, z: 34, rot: 1, burn: 0.9, fire: 1.2 },
+                { id: 'pickup', x: -8, z: -12, rot: 1.57, burn: 1, fire: 1.4 },
+                { id: 'police', x: 7, z: 3, rot: 0.3, burn: 0.6 },
+                { id: 'wagon', x: -9, z: 52, rot: 0.1, burn: 0.5 },
+                { id: 'sports', x: 9, z: 60, rot: 3, burn: 0.3 },
+                { id: 'tank', x: 10, z: -14, rot: 0.5, burn: 0.85, fire: 2.2 },
+                { id: 'truck', x: -26, z: 30, rot: 1.57, burn: 0.8, fire: 1.6 },
+                { id: 'barrier_large', x: -26, z: 36, rot: 1.57 },
+                { id: 'barrier_large', x: 26, z: 36, rot: 1.57 },
+                { id: 'traffic_barrier', x: 2, z: 25, rot: 0.1 },
+                { id: 'traffic_barrier', x: -2.2, z: 25, rot: -0.1 },
+                { id: 'sack_trench_small', x: -7, z: 36, rot: 0.2 },
+                { id: 'sack_trench_small', x: 7, z: -38, rot: 3.1 },
+                { id: 'debris_pile', x: -13, z: 8, rot: 0.4, burn: 0.6 },
+                { id: 'debris_pile', x: 13, z: -4, rot: 1.2, burn: 0.6 },
+                { id: 'debris_pile', x: -13, z: -24, rot: 2.2, burn: 0.6 },
+                { id: 'wall_broken', x: -13.6, z: 19.6, rot: 0.1, burn: 0.4 },
+                { id: 'dumpster', x: 12, z: 22, rot: 1.57 },
+                { id: 'trash_container', x: -12.5, z: 44, rot: 1.57 },
+                { id: 'traffic_light', x: -11, z: 30, rot: 0 },
+                { id: 'traffic_light', x: 11, z: 30, rot: 3.14 },
+                { id: 'traffic_light', x: -11, z: -14, rot: 0 },
+                { id: 'street_light', x: 11, z: 50, rot: 3.14 },
+                { id: 'barrel2', x: -9, z: 30, rot: 0 },
+                { id: 'barrel2', x: 9, z: -22, rot: 0.5 },
+                { id: 'turret_gun', x: 0, z: -52, rot: 0 }
+            ],
+            craters: [{ x: 0, z: 30, r: 4.5 }, { x: 0, z: -14, r: 4, fire: true }, { x: -30, z: 30, r: 3.5 }, { x: 26, z: -14, r: 3 }],
+            fires: [{ x: -9, z: 30, size: 1.1, smoke: 1 }, { x: 9, z: -22, size: 1.1, smoke: 1 }, { x: -40, z: -27, size: 0.8, smoke: 0.5 }],
+            columns: [{ x: -100, z: 50, width: 20 }, { x: 110, z: -30, width: 22 }, { x: 30, z: -125, width: 20 }, { x: -40, z: 125, width: 20 }],
+            blasts: [12, 30]
+        },
         props: [
             { type: 'hesco', x: -2, z: -58 }, { type: 'hesco', x: 2, z: -58 },
             { type: 'sandbag', x: -8, z: -61.5, rot: 0.1 }, { type: 'sandbag', x: 8, z: -61.5, rot: -0.2 },

@@ -82,10 +82,19 @@ export class PlayerMovement {
         const m = input.consumeMouseMovement();
         this.lastLook = m;
         const sens = this.sensitivityScale;
-        // Reduce sensitivity while aiming for precision
-        const adsScale = 1.0;
+        // zoomed aiming: look speed scales with the zoom so magnified optics stay controllable
+        const adsScale = this.zoomScale ?? 1.0;
         this._lookYaw -= m.x * sens * adsScale;
         this._lookPitch -= m.y * sens * adsScale;
+        // aim assist correction (Game._aimAssist): eases the view onto a target when aiming starts
+        const as = this.assist;
+        if (as && as.t > 0) {
+            const k = Math.min(1, dt * 14);
+            let dy = as.yaw - this._lookYaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy));
+            this._lookYaw += dy * k * as.strength;
+            this._lookPitch += (as.pitch - this._lookPitch) * k * as.strength;
+            as.t -= dt;
+        }
         const limit = Math.PI / 2 - 0.02;
         this._lookPitch = THREE.MathUtils.clamp(this._lookPitch, -limit, limit);
         this.yaw.rotation.y = this._lookYaw;
