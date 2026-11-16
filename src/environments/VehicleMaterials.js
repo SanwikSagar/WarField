@@ -147,3 +147,12 @@ export function vehicleMaterial(src, { burn = 0, military = false, dirt = 0.5, l
     cache.set(key, m);
     return m;
 }
+
+export function trimVehicleMaterials(sourceMaterialIds = []) {
+    const keep = new Set(sourceMaterialIds);
+    for (const [key, material] of cache) {
+        if (keep.has(key.split('|')[0])) continue;
+        material.dispose();
+        cache.delete(key);
+    }
+}

@@ -22,24 +22,91 @@ import { assetUrl } from '../utils/assetUrl.js';
  */
 const MODELS = { man: { file: 'civ_man', height: 1.78 }, woman: { file: 'civ_woman', height: 1.68 }, man2: { file: 'civ_man2', height: 1.76 } };
 const T = {};
-let loading = null;
+const loading = new Map();
 
 const clipName = (n) => n.replace(/^.*\|/, '').replace(/^(Female|Man)_/, '');
 
-export function loadCivilians() {
-    if (loading) return loading;
+export function loadCivilians(keys = Object.keys(MODELS)) {
     const L = makeGLTFLoader();
-    loading = Promise.all(Object.entries(MODELS).map(async ([key, m]) => {
-        try {
-            const g = await L.loadAsync(assetUrl(`/assets/models/civilians/${m.file}.glb`));
-            g.scene.updateMatrixWorld(true);
-            const box = new THREE.Box3().setFromObject(g.scene);
-            const clips = {};
-            for (const c of g.animations) clips[clipName(c.name)] = c;
-            T[key] = { scene: g.scene, clips, scale: m.height / Math.max(0.1, box.max.y - box.min.y), offsetY: -box.min.y };
-        } catch (e) { console.warn('Civilian model failed:', key, e); }
+    return Promise.all([...new Set(keys)].filter(key => MODELS[key]).map(key => {
+        if (T[key]) return Promise.resolve(T[key]);
+        if (loading.has(key)) return loading.get(key);
+        const m = MODELS[key];
+        const promise = L.loadAsync(assetUrl(`/assets/models/civilians/${m.file}.glb`))
+            .then(g => {
+                g.scene.updateMatrixWorld(true);
+                const box = new THREE.Box3().setFromObject(g.scene);
+                const clips = {};
+                for (const c of g.animations) clips[clipName(c.name)] = c;
+                T[key] = { scene: g.scene, clips, scale: m.height / Math.max(0.1, box.max.y - box.min.y), offsetY: -box.min.y };
+                return T[key];
+            })
+            .catch(e => { console.warn('Civilian model failed:', key, e); return null; })
+            .finally(() => loading.delete(key));
+        loading.set(key, promise);
+        return promise;
     }));
-    return loading;
+}
+
+export function trimCivilianModels(keys = []) {
+    const keep = new Set(keys.filter(key => MODELS[key]));
+    const removed = [];
+    for (const key of Object.keys(MODELS)) {
+        if (keep.has(key) || !T[key]) continue;
+        removed.push(T[key].scene);
+        delete T[key];
+    }
+
+    const retainedGeometries = new Set();
+    const retainedMaterials = new Set();
+    const retainedTextures = new Set();
+    for (const key of Object.keys(MODELS)) {
+        if (!T[key]) continue;
+        T[key].scene.traverse(o => {
+            if (!o.isMesh) return;
+            retainedGeometries.add(o.geometry);
+            for (const material of (Array.isArray(o.material) ? o.material : [o.material])) {
+                retainedMaterials.add(material);
+                collectTextures(material, retainedTextures);
+            }
+        });
+    }
+
+    const removedGeometries = new Set();
+    const removedMaterials = new Set();
+    const removedTextures = new Set();
+    for (const scene of removed) {
+        scene.traverse(o => {
+            if (!o.isMesh) return;
+            removedGeometries.add(o.geometry);
+            for (const material of (Array.isArray(o.material) ? o.material : [o.material])) {
+                removedMaterials.add(material);
+                collectTextures(material, removedTextures);
+            }
+            removedGeometries.forEach(geometry => {
+                if (!retainedGeometries.has(geometry)) geometry.dispose();
+            });
+        });
+    }
+    removedMaterials.forEach(material => {
+        if (!retainedMaterials.has(material)) material.dispose();
+    });
+    removedTextures.forEach(texture => {
+        if (!retainedTextures.has(texture)) texture.dispose();
+    });
+
+    const retainedIds = new Set([...retainedMaterials].map(material => material.uuid));
+    for (const [key, material] of matCache) {
+        if (retainedIds.has(key.split('|')[0])) continue;
+        material.dispose();
+        matCache.delete(key);
+    }
+}
+
+function collectTextures(material, textures) {
+    for (const value of Object.values(material)) {
+        if (value && value.isTexture) textures.add(value);
+    }
 }
 
 // worn, dusty clothing palette (linear-ish albedo, below the global albedo cap)

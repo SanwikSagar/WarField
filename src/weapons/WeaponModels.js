@@ -55,27 +55,31 @@ const SPECS = {
 
 const templates = {};
 const tpTemplates = {};   // ~3k-tri versions for NPCs (normals rebuilt on load)
-let loading = null;
+const loading = new Map();
 
-export function loadWeaponModels() {
-    if (loading) return loading;
-    loading = (async () => {
-        const L = makeGLTFLoader();
-        await Promise.all(Object.entries(SPECS).map(async ([id, spec]) => {
+export function loadWeaponModels(ids = Object.keys(SPECS)) {
+    const L = makeGLTFLoader();
+    return Promise.all([...new Set(ids)].filter(id => SPECS[id]).map(id => {
+        if (loading.has(id)) return loading.get(id);
+        if (templates[id]) return Promise.resolve(templates[id]);
+        const spec = SPECS[id];
+        const promise = (async () => {
             try {
                 const gl = await L.loadAsync(assetUrl(`/assets/models/weapons/${spec.file}.glb`));
                 templates[id] = prepare(gl.scene, spec);
             } catch (e) { console.warn('Weapon model failed:', id, e); }
-            if (['urgi', 'm5scw', 'ak74m'].includes(id)) {
+            if (['urgi', 'm5scw', 'ak74m'].includes(id) && !tpTemplates[id]) {
                 try {
                     const lo = await L.loadAsync(assetUrl(`/assets/models/weapons/${spec.file}_tp.glb`));
                     lo.scene.traverse(o => { if (o.isMesh && !o.geometry.attributes.normal) o.geometry.computeVertexNormals(); });
                     tpTemplates[id] = prepare(lo.scene, spec);
                 } catch (e) { /* fall back to the full model */ }
             }
-        }));
-    })();
-    return loading;
+            return templates[id] || null;
+        })().finally(() => loading.delete(id));
+        loading.set(id, promise);
+        return promise;
+    }));
 }
 export function hasWeaponModel(id) { return !!templates[id]; }
 

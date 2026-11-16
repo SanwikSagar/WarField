@@ -1,5 +1,6 @@
 import * as THREE from '/node_modules/three/build/three.module.js';
 import { BIOMES } from '../environments/biomes.js';
+import { warIds } from '../environments/WarModels.js';
 
 /**
  * Owns the THREE.Scene and the currently-loaded level. Loading a biome
@@ -20,21 +21,21 @@ export class SceneManager {
 
     /** Build and return a level for the given biome id. */
     async loadLevel(biomeId, detail = {}) {
-        this.clearLevel();
-        const { LevelBuilder } = await import('../environments/LevelBuilder.js');
         const config = BIOMES[biomeId] || BIOMES.wildlands;
+        await this.clearLevel(config);
+        const { LevelBuilder } = await import('../environments/LevelBuilder.js');
         this.level = new LevelBuilder(this.scene).build(config, detail);
         if (!this.level.sky.hdrActive) this.scene.background = this.level.sky.palette.fogColor;
         return this.level;
     }
 
-    clearLevel() {
+    clearLevel(retainConfig = null) {
         if (this.level) {
             if (this.level.dispose) this.level.dispose();   // sky, weather, foliage systems
             this.scene.remove(this.level.group);
             this.level.group.traverse(obj => {
-                if (obj.geometry) obj.geometry.dispose();
-                if (obj.material) {
+                if (!obj.userData.sharedResources && obj.geometry) obj.geometry.dispose();
+                if (!obj.userData.sharedResources && obj.material) {
                     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
                     mats.forEach(m => m.dispose());
                 }
@@ -44,6 +45,17 @@ export class SceneManager {
         }
         delete this.scene.userData.shadowBaked;      // the next level bakes its own static shadows
         this.level = null;
+        return Promise.all([
+            import('../environments/Foliage.js'),
+            import('../environments/PropModels.js'),
+            import('../environments/WarModels.js')
+        ]).then(([foliage, props, war]) => {
+            foliage.trimFoliageAssets(retainConfig);
+            props.trimPropModels(retainConfig);
+            war.trimWarModels(retainConfig ? warIds(retainConfig) : []);
+        }).catch(error => {
+            console.warn('Mission asset cleanup failed:', error);
+        });
     }
 
     getScene() { return this.scene; }

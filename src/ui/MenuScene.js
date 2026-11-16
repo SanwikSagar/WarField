@@ -833,7 +833,7 @@ export class MenuScene {
     // ── characters & props (async) ─────────────────────────────────────
     async _loadCharacters() {
         try {
-            await Promise.all([loadCharacters(), loadWeaponModels()]);
+            await Promise.all([loadCharacters(), loadWeaponModels(['m5scw', 'ak74m'])]);
         } catch (e) { console.warn('Menu characters unavailable:', e); return; }
         if (this.disposed) return;
         const wet = (c) => c.materials.forEach(m => { m.roughness = 0.5; m.metalness = Math.max(m.metalness ?? 0, 0.08); });

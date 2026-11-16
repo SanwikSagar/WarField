@@ -34,7 +34,7 @@ import { cloud } from '../save/CloudSave.js';
 import { loadingScreen } from '../ui/LoadingScreen.js';
 import { MiniMap } from '../ui/MiniMap.js';
 import { occlusion, updateViewCone, viewCone } from '../render/Occlusion.js';
-import { loadCivilians, Civilians } from '../ai/Civilians.js';
+import { loadCivilians, trimCivilianModels, Civilians } from '../ai/Civilians.js';
 import { TouchControls } from '../ui/TouchControls.js';
 import { buildReflectionProbe } from '../render/ReflectionProbe.js';
 import { loadWarModels, warIds, WAR_TEXTURES } from '../environments/WarModels.js';
@@ -383,11 +383,18 @@ export class Game {
         this._clearGameplay();
 
         const cfg = BIOMES[mission.biome] || {};
+        const civilianModels = mission.biome === 'city' ? ['man', 'woman', 'man2'] : mission.biome === 'deadzone' ? ['man'] : [];
+        trimCivilianModels(civilianModels);
         await Promise.all([
             import('../environments/Foliage.js')
-                .then(({ loadFoliageAssets }) => loadFoliageAssets())
+                .then(({ loadFoliageAssets }) => loadFoliageAssets(cfg))
                 .catch(e => { console.warn('Foliage assets unavailable:', e); }),
-            Promise.all([loadCharacters(), loadWeaponModels(), loadPropModels(cfg), loadCivilians()])
+            Promise.all([
+                loadCharacters(),
+                loadWeaponModels(['urgi', 'ak74m', 'g17', 'm5scw']),
+                loadPropModels(cfg),
+                loadCivilians(civilianModels)
+            ])
                 .catch(e => { console.warn('Characters/weapons unavailable:', e); }),
             loadWarModels(warIds(cfg)).catch(e => { console.warn('War models unavailable:', e); }),
             loadPhotoAssets([...(cfg.photo || []), ...(cfg.war ? WAR_TEXTURES : [])], cfg.hdr && cfg.hdr.file)
@@ -912,6 +919,7 @@ export class Game {
         if (ls) ls.remove();
         this._loadingEl = null;
         this._clearGameplay();
+        trimCivilianModels();
         this.sceneManager.clearLevel();
         this.missionComplete.hide();
         this.pauseMenu.hide();

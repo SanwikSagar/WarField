@@ -1,6 +1,4 @@
 import * as THREE from '/node_modules/three/build/three.module.js';
-import { GLTFLoader } from '/node_modules/three/examples/jsm/loaders/GLTFLoader.js';
-import { DRACOLoader } from '/node_modules/three/examples/jsm/loaders/DRACOLoader.js';
 import { makeGLTFLoader, loadKTX2 } from './AssetLoaders.js';
 import { mergeGeometries } from '/node_modules/three/examples/jsm/utils/BufferGeometryUtils.js';
 import { bakeImpostor } from './Impostors.js';
@@ -24,45 +22,121 @@ import { assetUrl } from '../utils/assetUrl.js';
 
 // ── asset loading (lazy: EZ-Tree is a big chunk, only fetched on mission start)
 let EZ = null;
-let assets = null;
-let loading = null;
+const assets = { rocks: [], grass: null, textures: {}, models: {} };
+const loading = new Map();
+const loaded = new Set();
 
-export function loadFoliageAssets() {
-    if (assets) return Promise.resolve(assets);
-    if (loading) return loading;
-    loading = (async () => {
-        const out = { rocks: [], grass: null, textures: {} };
-        try { EZ = await import('@dgreenheck/ez-tree'); } catch (e) { console.warn('EZ-Tree failed to load:', e); }
+function needsRockAssets(config) {
+    if (!config) return true;
+    const rocks = config.rocks;
+    return !!(rocks && ((rocks.count || 0) > 0 || (rocks.pebbles || 0) > 0 || config.perimeterRocks));
+}
 
-        const gltf = makeGLTFLoader();   // Draco + KTX2 aware
-        const model = (url) => gltf.loadAsync(url).then(g => g.scene, () => null);
-
-        const [r1, r2, r3, fern, reeds, grassTex] = await Promise.all([
-            model(assetUrl('/assets/models/environments/rock1.glb')),
-            model(assetUrl('/assets/models/environments/rock2.glb')),
-            model(assetUrl('/assets/models/environments/rock3.glb')),
-            model(assetUrl('/assets/models/foliage/fern.glb')),
-            model(assetUrl('/assets/models/foliage/reeds.glb')),
-            loadKTX2(assetUrl('/assets/ktx2/ez_grass.ktx2'))
-        ]);
-        out.models = {};
-        if (fern) out.models.fern = prepScatterModel(fern);
-        if (reeds) out.models.reeds = prepScatterModel(reeds);
-        const dirt = null, dirtN = null;
-        const g = null;
-        [r1, r2, r3].forEach(scene => {
-            const m = scene && firstMesh(scene);
-            if (m) out.rocks.push(normalizeGeometry(m.geometry.clone(), 'rock'), m.material);
-        });
-        if (g) {
-            const m = firstMesh(g);
-            if (m) out.grass = { geometry: normalizeGeometry(m.geometry.clone(), 'height'), map: m.material.map };
+export async function loadFoliageAssets(config = null) {
+    const vegetation = config && config.vegetation;
+    const models = vegetation && vegetation.models || {};
+    const needsRocks = needsRockAssets(config);
+    const needsTrees = !config || !!(vegetation && vegetation.count);
+    const needsGrassTexture = !config || config.groundKind === 'forest';
+    const needModel = (key) => !config || !!models[key];
+    const ensure = (key, task) => {
+        if (loaded.has(key)) return Promise.resolve();
+        if (!loading.has(key)) {
+            const promise = Promise.resolve().then(task).finally(() => {
+                loading.delete(key);
+                loaded.add(key);
+            });
+            loading.set(key, promise);
         }
-        out.textures = { dirt, dirtN, grass: grassTex };
-        assets = out;
-        return out;
-    })();
-    return loading;
+        return loading.get(key);
+    };
+    const tasks = [];
+
+    if (needsRocks) tasks.push(ensure('rocks', async () => {
+        const loader = makeGLTFLoader();
+        const scenes = await Promise.all([1, 2, 3].map(index =>
+            loader.loadAsync(assetUrl(`/assets/models/environments/rock${index}.glb`)).then(g => g.scene, () => null)));
+        assets.rocks.length = 0;
+        scenes.forEach(scene => {
+            const mesh = scene && firstMesh(scene);
+            if (mesh) assets.rocks.push(normalizeGeometry(mesh.geometry.clone(), 'rock'), mesh.material);
+        });
+    }));
+
+    if (needsTrees) tasks.push(ensure('ez-tree', async () => {
+        try { EZ = await import('@dgreenheck/ez-tree'); }
+        catch (e) { console.warn('EZ-Tree failed to load:', e); }
+    }));
+
+    if (needsGrassTexture) tasks.push(ensure('texture:grass', async () => {
+        assets.textures.grass = await loadKTX2(assetUrl('/assets/ktx2/ez_grass.ktx2'));
+    }));
+
+    for (const key of ['fern', 'reeds']) {
+        if (!needModel(key)) continue;
+        tasks.push(ensure(`model:${key}`, async () => {
+            const loader = makeGLTFLoader();
+            try {
+                const gl = await loader.loadAsync(assetUrl(`/assets/models/foliage/${key}.glb`));
+                assets.models[key] = prepScatterModel(gl.scene, true);
+            } catch (e) { console.warn('Foliage model failed:', key, e); }
+        }));
+    }
+
+    await Promise.all(tasks);
+    return assets;
+}
+
+export function trimFoliageAssets(config = null) {
+    const models = config && config.vegetation && config.vegetation.models || {};
+    const keep = new Set();
+    if (models.fern) keep.add('fern');
+    if (models.reeds) keep.add('reeds');
+    if (models.phFern) keep.add('ph_fern');
+    if (models.phShrub) keep.add('ph_shrub');
+    if (models.phNettle) keep.add('ph_nettle');
+    if (models.phBranch) keep.add('ph_branch');
+
+    if (!needsRockAssets(config)) {
+        const geometries = new Set(), materials = new Set(), textures = new Set();
+        for (let i = 0; i < assets.rocks.length; i += 2) {
+            if (assets.rocks[i]) geometries.add(assets.rocks[i]);
+            if (assets.rocks[i + 1]) materials.add(assets.rocks[i + 1]);
+        }
+        disposeFoliageResources(geometries, materials, textures);
+        assets.rocks.length = 0;
+        loaded.delete('rocks');
+    }
+    if (!config || config.groundKind !== 'forest') {
+        assets.textures.grass?.dispose();
+        assets.textures.grass = null;
+        loaded.delete('texture:grass');
+    }
+
+    for (const [key, model] of Object.entries(assets.models)) {
+        if (keep.has(key)) continue;
+        disposeScatterModel(model);
+        delete assets.models[key];
+        loaded.delete(`model:${key}`);
+    }
+}
+
+function disposeScatterModel(model) {
+    const geometries = new Set(), materials = new Set(), textures = new Set();
+    (model && model.parts || []).forEach(part => {
+        geometries.add(part.geometry);
+        materials.add(part.material);
+    });
+    disposeFoliageResources(geometries, materials, textures, !!(model && model.ownsTextures));
+}
+
+function disposeFoliageResources(geometries, materials, textures, disposeTextures = true) {
+    if (disposeTextures) materials.forEach(material => Object.values(material).forEach(value => {
+        if (value && value.isTexture) textures.add(value);
+    }));
+    geometries.forEach(geometry => geometry.dispose());
+    materials.forEach(material => material.dispose());
+    textures.forEach(texture => texture.dispose());
 }
 
 function firstMesh(root) {
@@ -841,6 +915,7 @@ export function buildRocks(ctx, r, perimeter) {
         thresholds: impostors.length ? [propLod[0], propLod[2], propLod[3]] : [(detail.rockNear ?? 55), 170],
         shadowLods: [0], shadowDistance: detail.shadowDistance, backCull: 8
     });
+    if (useGLB) inst.all.forEach(mesh => { if (baseGeos.includes(mesh.geometry)) mesh.userData.sharedResources = true; });
     return {
         update: (c, d) => inst.update(c, d),
         dispose: () => { inst.dispose(); impostors.forEach(i => i.dispose()); farGeo.dispose(); farMat.dispose(); pebbleGeo.dispose(); if (!useGLB) { baseGeos.forEach(g => g.dispose()); mats.forEach(m => m.dispose()); } }
@@ -848,7 +923,7 @@ export function buildRocks(ctx, r, perimeter) {
 }
 
 /** Normalise a GLB (all meshes) to unit height, base on y=0, centred on x/z. */
-function prepScatterModel(scene) {
+function prepScatterModel(scene, ownsTextures = false) {
     scene.updateMatrixWorld(true);
     const meshes = [];
     scene.traverse(o => { if (o.isMesh) meshes.push(o); });
@@ -887,7 +962,7 @@ function prepScatterModel(scene) {
             if (index > 0) part.material.dispose();
         });
     }
-    return { parts: mergedParts, aspect: (size.x + size.z) / 2 / size.y };
+    return { parts: mergedParts, aspect: (size.x + size.z) / 2 / size.y, ownsTextures };
 }
 
 /**
@@ -924,6 +999,8 @@ export function buildModelScatter(ctx, key, count, cfg = {}) {
             thresholds: detail.plantLod ?? [16, 38, detail.grassDist ?? 85],
             shadowLods: detail.fieldMul >= 1 ? [0] : [], shadowDistance: detail.shadowDistance, backCull: 3
         });
+        const sharedGeometries = new Set(def.parts.map(part => part.geometry));
+        inst.all.forEach(mesh => { if (sharedGeometries.has(mesh.geometry)) mesh.userData.sharedResources = true; });
         return { update: (cam, dir) => inst.update(cam, dir), dispose: () => { inst.dispose(); impostor.dispose(); } };
     }
     const G = 4, span = (b + 10) * 2, cell = span / G;
@@ -957,6 +1034,7 @@ export function buildModelScatter(ctx, key, count, cfg = {}) {
         if (!n) continue;
         const meshes = def.parts.map(p => {
             const m = new THREE.InstancedMesh(p.geometry, p.material, n);
+            m.userData.sharedResources = true;
             entries.forEach(([mat4, c], i) => { m.setMatrixAt(i, mat4); m.setColorAt(i, c); });
             m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true;
             m.computeBoundingSphere();
@@ -975,7 +1053,7 @@ export function buildModelScatter(ctx, key, count, cfg = {}) {
                 c.meshes.forEach(m => { m.visible = cnt > 0; m.count = cnt; });
             }
         },
-        dispose: () => { chunks.forEach(c => c.meshes.forEach(m => { group.remove(m); m.dispose(); })); def.parts.forEach(p => { p.geometry.dispose(); p.material.dispose(); }); }
+        dispose: () => { chunks.forEach(c => c.meshes.forEach(m => { group.remove(m); m.dispose(); })); }
     };
 }
 

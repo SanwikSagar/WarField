@@ -24,21 +24,24 @@ const T = {};      // templates by name
 const FLIP_FORWARD = { army1: true };
 const PART_NAMES = ['hips', 'spine', 'chest', 'neck', 'head', 'uL', 'lL', 'fL', 'uR', 'lR', 'fR', 'aL', 'fAL', 'hL', 'aR', 'fAR', 'hR'];
 
-let charactersLoading = null;
-export function loadCharacters() {
-    if (charactersLoading) return charactersLoading;
-    charactersLoading = (async () => {
-        const loader = makeGLTFLoader();
-        for (const name of ['soldier', 'army1', 'army2']) {
-            try {
-                // offline-reduced LOD (tools/simplify-characters.mjs, ~4.5-5.5k tris), else the original (~10-12k)
-                const gl = await loader.loadAsync(assetUrl(`/assets/models/characters/${name}_lod.glb`)).catch(() => loader.loadAsync(assetUrl(`/assets/models/characters/${name}.glb`)));
+const CHARACTER_KINDS = ['soldier', 'army1', 'army2'];
+const characterLoads = new Map();
+export function loadCharacters(kinds = CHARACTER_KINDS) {
+    const loader = makeGLTFLoader();
+    return Promise.all([...new Set(kinds)].filter(name => CHARACTER_KINDS.includes(name)).map(name => {
+        if (T[name]) return Promise.resolve(T[name]);
+        if (characterLoads.has(name)) return characterLoads.get(name);
+        const promise = loader.loadAsync(assetUrl(`/assets/models/characters/${name}_lod.glb`))
+            .catch(() => loader.loadAsync(assetUrl(`/assets/models/characters/${name}.glb`)))
+            .then(gl => {
                 T[name] = name === 'soldier' ? prepSkinned(gl.scene) : prepStatic(gl.scene, name);
-            } catch (e) { console.warn('Character failed to load:', name, e); }
-        }
-        T.ready = true;
-    })();
-    return charactersLoading;
+                return T[name];
+            })
+            .catch(e => { console.warn('Character failed to load:', name, e); return null; })
+            .finally(() => characterLoads.delete(name));
+        characterLoads.set(name, promise);
+        return promise;
+    }));
 }
 export function hasCharacters() { return !!(T.soldier || T.army1 || T.army2); }
 

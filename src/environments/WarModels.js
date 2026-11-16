@@ -3,7 +3,7 @@ import { makeGLTFLoader } from './AssetLoaders.js';
 import { weather } from './CityKit.js';
 import { mergeByMaterial } from '../render/MeshMerge.js';
 import { lodManifest } from './LodManifest.js';
-import { vehicleMaterial } from './VehicleMaterials.js';
+import { vehicleMaterial, trimVehicleMaterials } from './VehicleMaterials.js';
 import { assetUrl } from '../utils/assetUrl.js';
 
 /**
@@ -87,6 +87,47 @@ export function loadWarModels(ids = []) {
     }));
 }
 
+export function trimWarModels(ids = []) {
+    const keep = new Set(ids);
+    const removed = [];
+    for (const id of Object.keys(T)) {
+        if (keep.has(id)) continue;
+        removed.push(T[id].scene);
+        delete T[id];
+    }
+
+    const collect = (scenes) => {
+        const geometries = new Set(), materials = new Set(), textures = new Set();
+        scenes.forEach(scene => scene && scene.traverse(o => {
+            if (!o.isMesh) return;
+            geometries.add(o.geometry);
+            for (const material of (Array.isArray(o.material) ? o.material : [o.material])) {
+                materials.add(material);
+                Object.values(material).forEach(value => { if (value && value.isTexture) textures.add(value); });
+            }
+        }));
+        return { geometries, materials, textures };
+    };
+    const retained = collect(Object.values(T).map(entry => entry.scene));
+    const discard = collect(removed);
+    const removedMaterialIds = new Set();
+    const retainedMaterialIds = new Set([...retained.materials].map(material => material.uuid));
+    discard.geometries.forEach(geometry => { if (!retained.geometries.has(geometry)) geometry.dispose(); });
+    discard.materials.forEach(material => {
+        if (retained.materials.has(material)) return;
+        removedMaterialIds.add(material.uuid);
+        material.dispose();
+    });
+    discard.textures.forEach(texture => { if (!retained.textures.has(texture)) texture.dispose(); });
+
+    for (const [key, material] of matCache) {
+        if (!removedMaterialIds.has(key.split('|')[0])) continue;
+        material.dispose();
+        matCache.delete(key);
+    }
+    trimVehicleMaterials([...retainedMaterialIds]);
+}
+
 export function hasWar(id) { return !!T[id]; }
 export function warSize(id) { return T[id] ? T[id].size : null; }
 
@@ -129,6 +170,7 @@ export function placeWar(lb, id, x, z, o = {}) {
     const rust = spec.vehicle ? 0.35 + burn * 0.3 : /barrel|barrier|cannon|turret|tower|antenna|dumpster|trash|propane|barricade|light/.test(id) ? 0.32 : 0;
     model.traverse(m => {
         if (!m.isMesh) return;
+        m.userData.sharedResources = true;
         m.castShadow = true; m.receiveShadow = true;
         // vehicles: real automotive finishes (paint / glass / rubber / trim / lamps), the rest: weathered props
         const military = /tank|armored|helicopter|rover/.test(id);

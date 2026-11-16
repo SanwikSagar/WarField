@@ -27,9 +27,9 @@ const T = {};
 const loading = new Map();
 const detail = TextureFactory.ground(64, 2);
 // one adjusted material per template material, so identical props batch into one LOD draw
-const SHARED = new WeakMap();
+const SHARED = new Map();
 
-export function loadPropModels(config = null) {
+function propIds(config) {
     const ids = config ? new Set([
         ...(config.phProps || []).map(prop => prop.id), ...(config.phScatter || []).map(prop => prop.id)
     ]) : new Set(IDS);
@@ -39,6 +39,11 @@ export function loadPropModels(config = null) {
             if (models[key]) ids.add(id);
         }
     }
+    return ids;
+}
+
+export function loadPropModels(config = null) {
+    const ids = propIds(config);
     const L = makeGLTFLoader();
     return Promise.all([...ids].map(id => {
         if (T[id]) return Promise.resolve(T[id]);
@@ -67,6 +72,38 @@ export function loadPropModels(config = null) {
     }));
 }
 
+export function trimPropModels(config = null) {
+    const keep = config ? propIds(config) : new Set();
+    const removed = [];
+    for (const id of Object.keys(T)) {
+        if (keep.has(id)) continue;
+        removed.push(T[id]);
+        delete T[id];
+    }
+    const collect = (templates) => {
+        const geometries = new Set(), materials = new Set(), textures = new Set();
+        templates.forEach(template => template && template.traverse(o => {
+            if (!o.isMesh) return;
+            geometries.add(o.geometry);
+            for (const material of (Array.isArray(o.material) ? o.material : [o.material])) {
+                materials.add(material);
+                Object.values(material).forEach(value => { if (value && value.isTexture) textures.add(value); });
+            }
+        }));
+        return { geometries, materials, textures };
+    };
+    const retained = collect(Object.values(T));
+    const discard = collect(removed);
+    discard.geometries.forEach(geometry => { if (!retained.geometries.has(geometry)) geometry.dispose(); });
+    discard.materials.forEach(material => {
+        if (retained.materials.has(material)) return;
+        const shared = SHARED.get(material);
+        if (shared) { shared.dispose(); SHARED.delete(material); }
+        material.dispose();
+    });
+    discard.textures.forEach(texture => { if (!retained.textures.has(texture)) texture.dispose(); });
+}
+
 export function hasProp(id) { return !!T[id]; }
 export function getPropTemplate(id) { return T[id] || null; }
 
@@ -78,6 +115,7 @@ export function placeProp(lb, id, x, z, rot = 0, scale = 1, y = null) {
     o.position.set(x, y ?? lb.heightAt(x, z), z);
     o.rotation.y = rot;
     o.scale.setScalar(scale);
+    o.traverse(mesh => { if (mesh.isMesh) mesh.userData.sharedResources = true; });
     if (!FOLIAGE.has(id)) {
         o.traverse(mesh => {
             if (!mesh.isMesh) return;
