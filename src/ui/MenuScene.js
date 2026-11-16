@@ -97,7 +97,6 @@ export class MenuScene {
         this._buildSky();
         this._buildMountains();
         this._buildMist();
-        this._buildForest();
         this._buildGround();
         this._buildCamp();
         this._buildTruck(-3.7, -17.5, -0.3, true);
@@ -106,8 +105,20 @@ export class MenuScene {
         this._buildCanopy();
         this._buildForeground();
         this._buildRain();
-        this._loadCharacters();
-        this._loadProps();
+        this._buildConeForest();
+        requestAnimationFrame(() => {
+            const loadBackdropAssets = () => {
+                if (this.disposed) return;
+                this._buildForest();
+                this._loadCharacters();
+                this._loadProps();
+            };
+            if (window.requestIdleCallback) {
+                window.requestIdleCallback(loadBackdropAssets, { timeout: 1500 });
+            } else {
+                window.setTimeout(loadBackdropAssets, 250);
+            }
+        });
     }
 
     // ── helpers ────────────────────────────────────────────────────────
@@ -365,8 +376,17 @@ export class MenuScene {
             });
         } catch (e) { console.warn('Menu EZ-Tree forest failed:', e); }
         if (this.disposed) { if (forest) forest.dispose(); return; }
-        if (forest) { this.forest = forest; return; }
-        this._buildConeForest();
+        if (forest) {
+            this.forest = forest;
+            if (this.coneForest) {
+                this.group.remove(this.coneForest);
+                this.coneForest.geometry.dispose();
+                this.coneForest.material.dispose();
+                this.coneForest = null;
+            }
+            return;
+        }
+        if (!this.coneForest) this._buildConeForest();
     }
 
     _buildConeForest() {
@@ -400,6 +420,7 @@ export class MenuScene {
         });
         trees.instanceMatrix.needsUpdate = true;
         this.group.add(trees);
+        this.coneForest = trees;
     }
 
     _buildGround() {
