@@ -5,6 +5,7 @@ import { globalEvents } from '../core/EventManager.js';
 import { createCharacter } from '../core/CharacterFactory.js';
 import { animation } from '../animation/AnimationSystem.js';
 import { occlusion } from '../render/Occlusion.js';
+import { assetUrl } from '../utils/assetUrl.js';
 
 /**
  * Civilians, medics and the dead.
@@ -30,7 +31,7 @@ export function loadCivilians() {
     const L = makeGLTFLoader();
     loading = Promise.all(Object.entries(MODELS).map(async ([key, m]) => {
         try {
-            const g = await L.loadAsync(`/assets/models/civilians/${m.file}.glb`);
+            const g = await L.loadAsync(assetUrl(`/assets/models/civilians/${m.file}.glb`));
             g.scene.updateMatrixWorld(true);
             const box = new THREE.Box3().setFromObject(g.scene);
             const clips = {};

@@ -3,6 +3,7 @@ import { makeGLTFLoader } from './AssetLoaders.js';
 import { TextureFactory } from '../utils/TextureFactory.js';
 import { mergeByMaterial } from '../render/MeshMerge.js';
 import { lodManifest } from './LodManifest.js';
+import { assetUrl } from '../utils/assetUrl.js';
 
 /**
  * CC0 scanned props from Poly Haven (KTX2 + Draco GLBs in /assets/models/props),
@@ -44,9 +45,9 @@ export function loadPropModels(config = null) {
         if (loading.has(id)) return loading.get(id);
         // offline-reduced file first (lod-manifest.json), else the compressed GLB, else the raw Poly Haven 1k glTF
         const promise = lodManifest()
-            .then(lod => (lod.props[id] ? L.loadAsync(lod.props[id]) : Promise.reject()))
-            .catch(() => L.loadAsync(`/assets/models/props/${id}.glb`))
-            .catch(() => L.loadAsync(`/assets/models/props/${id}/${id}_1k.gltf`)).then(g => {
+            .then(lod => (lod.props[id] ? L.loadAsync(assetUrl(lod.props[id])) : Promise.reject()))
+            .catch(() => L.loadAsync(assetUrl(`/assets/models/props/${id}.glb`)))
+            .catch(() => L.loadAsync(assetUrl(`/assets/models/props/${id}/${id}_1k.gltf`))).then(g => {
         g.scene.traverse(o => {
             if (!o.isMesh) return;
             // some scans ship an alternate weathered variant beside the clean one

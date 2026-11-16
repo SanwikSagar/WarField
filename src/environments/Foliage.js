@@ -6,6 +6,7 @@ import { mergeGeometries } from '/node_modules/three/examples/jsm/utils/BufferGe
 import { bakeImpostor } from './Impostors.js';
 import { relocatePathFoliage } from './PathFoliage.js';
 import { occlusion, viewCone } from '../render/Occlusion.js';
+import { assetUrl } from '../utils/assetUrl.js';
 
 /**
  * Realistic-but-cheap foliage for the web.
@@ -37,12 +38,12 @@ export function loadFoliageAssets() {
         const model = (url) => gltf.loadAsync(url).then(g => g.scene, () => null);
 
         const [r1, r2, r3, fern, reeds, grassTex] = await Promise.all([
-            model('/assets/models/environments/rock1.glb'),
-            model('/assets/models/environments/rock2.glb'),
-            model('/assets/models/environments/rock3.glb'),
-            model('/assets/models/foliage/fern.glb'),
-            model('/assets/models/foliage/reeds.glb'),
-            loadKTX2('/assets/ktx2/ez_grass.ktx2')
+            model(assetUrl('/assets/models/environments/rock1.glb')),
+            model(assetUrl('/assets/models/environments/rock2.glb')),
+            model(assetUrl('/assets/models/environments/rock3.glb')),
+            model(assetUrl('/assets/models/foliage/fern.glb')),
+            model(assetUrl('/assets/models/foliage/reeds.glb')),
+            loadKTX2(assetUrl('/assets/ktx2/ez_grass.ktx2'))
         ]);
         out.models = {};
         if (fern) out.models.fern = prepScatterModel(fern);

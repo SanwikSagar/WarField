@@ -8,6 +8,8 @@
  * Volumes are split into master/music/sfx/ambience buses so the settings
  * menu can adjust each independently (GDD 11.11).
  */
+import { assetUrl } from '../utils/assetUrl.js';
+
 export class AudioManager {
     constructor() {
         this.ctx = null;
@@ -85,7 +87,7 @@ export class AudioManager {
     }
     async _fetchBuffer(url) {
         try {
-            const r = await fetch(url);
+            const r = await fetch(assetUrl(url));
             if (!r.ok) return null;
             return await this.ctx.decodeAudioData(await r.arrayBuffer());
         } catch (e) { return null; }

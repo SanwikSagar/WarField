@@ -1,4 +1,5 @@
 import * as THREE from '/node_modules/three/build/three.module.js';
+import { assetUrl } from '../utils/assetUrl.js';
 
 /**
  * Fire, smoke, embers and explosions rendered from real CC0 sprite flipbooks
@@ -49,7 +50,7 @@ const loader = new THREE.TextureLoader();
 const texCache = new Map();
 function atlas(name) {
     if (!texCache.has(name)) {
-        const t = loader.load(`/assets/vfx/${name}.png`);
+        const t = loader.load(assetUrl(`/assets/vfx/${name}.png`));
         t.colorSpace = THREE.SRGBColorSpace;
         t.generateMipmaps = false; t.minFilter = THREE.LinearFilter;
         texCache.set(name, t);

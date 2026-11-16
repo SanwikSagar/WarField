@@ -2,6 +2,7 @@ import * as THREE from '/node_modules/three/build/three.module.js';
 import { RGBELoader } from '/node_modules/three/examples/jsm/loaders/RGBELoader.js';
 import { loadKTX2 } from './AssetLoaders.js';
 import { assetStream } from './AssetStream.js';
+import { assetUrl } from '../utils/assetUrl.js';
 
 /**
  * Loader for the real photo-scanned CC0 assets in /assets/polyhaven
@@ -9,7 +10,7 @@ import { assetStream } from './AssetStream.js';
  * Each level loads only the handful of 1k maps and the one HDRI it needs.
  * Everything falls back to the procedural textures if a file is missing.
  */
-const BASE = '/assets/polyhaven/';
+const BASE = assetUrl('/assets/polyhaven/');
 const texCache = new Map();
 let hdrCache = new Map();
 let current = null;
@@ -20,7 +21,7 @@ async function loadTexSet(name) {
         texCache.delete(name); texCache.set(name, set);
         return set;
     }
-    const map = await loadKTX2(`/assets/ktx2/${name}_diff.ktx2`);
+    const map = await loadKTX2(assetUrl(`/assets/ktx2/${name}_diff.ktx2`));
     if (map) map.colorSpace = THREE.SRGBColorSpace;
     const set = map ? { map, normalMap: null, normalPromise: null } : await loadJpgSet(name);
     texCache.set(name, set);
@@ -42,7 +43,7 @@ function loadJpg(url, srgb) {
     }, undefined, () => resolve(null)));
 }
 async function loadJpgSet(name) {
-    const base = `/assets/textures/city/${name}`;
+    const base = assetUrl(`/assets/textures/city/${name}`);
     const [map, normalMap, roughnessMap] = await Promise.all([
         loadJpg(`${base}_diff_1k.jpg`, true), loadJpg(`${base}_nor_gl_1k.jpg`, false), loadJpg(`${base}_rough_1k.jpg`, false)
     ]);
@@ -83,7 +84,7 @@ export function requestPhotoDetail(name) {
     const set = texCache.get(name);
     if (!set) return Promise.resolve(null);
     if (set.normalMap) return Promise.resolve(set.normalMap);
-    if (!set.normalPromise) set.normalPromise = loadKTX2(`/assets/ktx2/${name}_nor.ktx2`, { priority: 10 }).then(texture => {
+    if (!set.normalPromise) set.normalPromise = loadKTX2(assetUrl(`/assets/ktx2/${name}_nor.ktx2`), { priority: 10 }).then(texture => {
         if (texCache.get(name) !== set) { texture?.dispose(); return null; }
         if (texture) texture.colorSpace = THREE.NoColorSpace;
         set.normalMap = texture;

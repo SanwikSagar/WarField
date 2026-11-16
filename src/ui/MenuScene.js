@@ -9,6 +9,7 @@ import { loadPropModels, getPropTemplate } from '../environments/PropModels.js';
 import { audio } from '../audio/AudioManager.js';
 import { buildMenuForest, updateWindTime } from '../environments/Foliage.js';
 import { RGBELoader } from '/node_modules/three/examples/jsm/loaders/RGBELoader.js';
+import { assetUrl } from '../utils/assetUrl.js';
 
 /**
  * Cinematic main-menu backdrop (GDD 10.4): a rain-soaked forward camp at dusk,
@@ -183,7 +184,7 @@ export class MenuScene {
         this.scene.fog = new THREE.FogExp2(FOG_COLOR, 0.0135);
 
         // overcast HDR as image-based light: wet ground, metal and canvas reflect the storm sky
-        new RGBELoader().load('/assets/polyhaven/kloofendal_overcast_puresky_1k.hdr', (tex) => {
+        new RGBELoader().load(assetUrl('/assets/polyhaven/kloofendal_overcast_puresky_1k.hdr'), (tex) => {
             if (this.disposed) { tex.dispose(); return; }
             tex.mapping = THREE.EquirectangularReflectionMapping;
             this.envTex = tex;

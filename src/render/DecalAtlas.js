@@ -1,4 +1,5 @@
 import * as THREE from '/node_modules/three/build/three.module.js';
+import { assetUrl } from '../utils/assetUrl.js';
 
 /**
  * Every damage / debris decal in the game comes from ONE 1024x1024 WebP sprite atlas
@@ -20,7 +21,7 @@ export const HOLE_CELL = { concrete: CELL.holeConcrete, metal: CELL.holeMetal, w
 let TEX = null;
 export function decalTexture() {
     if (!TEX) {
-        TEX = new THREE.TextureLoader().load('/assets/vfx/decals.webp');
+        TEX = new THREE.TextureLoader().load(assetUrl('/assets/vfx/decals.webp'));
         TEX.colorSpace = THREE.SRGBColorSpace;
         TEX.anisotropy = 4;
     }

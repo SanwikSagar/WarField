@@ -12,11 +12,13 @@
  *     compositor thread: the morph stays smooth even while the main thread is busy building the level.
  * Memory: only the current and next images are referenced; every timer and animation is cancelled on hide().
  */
+import { assetUrl } from '../utils/assetUrl.js';
+
 const IMAGES = [
-    { src: '/assets/ui/loading/city-dusk.webp', caption: 'VEYRA CITY · DUSK', biomes: ['city', 'deadzone'] },
-    { src: '/assets/ui/loading/battlefield-dawn.webp', caption: 'THE FRONT · DAWN', biomes: ['dustland', 'wildlands'] },
-    { src: '/assets/ui/loading/locket-mud.webp', caption: 'WHAT THEY LEFT BEHIND', biomes: ['frostland'] },
-    { src: '/assets/ui/loading/relics-gold.webp', caption: 'RELICS OF THE WAR', biomes: [] }
+    { src: assetUrl('/assets/ui/loading/city-dusk.webp'), caption: 'VEYRA CITY · DUSK', biomes: ['city', 'deadzone'] },
+    { src: assetUrl('/assets/ui/loading/battlefield-dawn.webp'), caption: 'THE FRONT · DAWN', biomes: ['dustland', 'wildlands'] },
+    { src: assetUrl('/assets/ui/loading/locket-mud.webp'), caption: 'WHAT THEY LEFT BEHIND', biomes: ['frostland'] },
+    { src: assetUrl('/assets/ui/loading/relics-gold.webp'), caption: 'RELICS OF THE WAR', biomes: [] }
 ];
 const TIPS = [
     'Crouch behind cover to reload. Enemies flank when you stay in one place too long.',

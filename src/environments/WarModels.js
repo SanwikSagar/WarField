@@ -4,6 +4,7 @@ import { weather } from './CityKit.js';
 import { mergeByMaterial } from '../render/MeshMerge.js';
 import { lodManifest } from './LodManifest.js';
 import { vehicleMaterial } from './VehicleMaterials.js';
+import { assetUrl } from '../utils/assetUrl.js';
 
 /**
  * CC0 vehicles and battlefield props (public/assets/models/war, from Poly Pizza:
@@ -59,8 +60,8 @@ export function loadWarModels(ids = []) {
         // small/medium clutter has an offline-reduced (<= 1000 tris) version in lod-manifest.json
         const file = (SPEC[id] && SPEC[id].file) || id;
         const p = lodManifest()
-            .then(lod => (lod.war[file] ? L.loadAsync(lod.war[file]) : Promise.reject()))
-            .catch(() => L.loadAsync(`/assets/models/war/${file}.glb`)).then(g => {
+            .then(lod => (lod.war[file] ? L.loadAsync(assetUrl(lod.war[file])) : Promise.reject()))
+            .catch(() => L.loadAsync(assetUrl(`/assets/models/war/${file}.glb`))).then(g => {
             const inner = new THREE.Group();
             inner.add(g.scene);
             inner.updateMatrixWorld(true);

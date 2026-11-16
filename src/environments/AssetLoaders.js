@@ -3,6 +3,7 @@ import { GLTFLoader } from '/node_modules/three/examples/jsm/loaders/GLTFLoader.
 import { DRACOLoader } from '/node_modules/three/examples/jsm/loaders/DRACOLoader.js';
 import { KTX2Loader } from '/node_modules/three/examples/jsm/loaders/KTX2Loader.js';
 import { assetStream } from './AssetStream.js';
+import { assetUrl } from '../utils/assetUrl.js';
 
 /**
  * Shared loaders. Textures ship as KTX2 (Basis ETC1S): ~4x smaller files AND
@@ -14,8 +15,8 @@ let ktx2 = null, draco = null, rendererRef = null;
 export function initLoaders(renderer) {
     if (ktx2) return;
     rendererRef = renderer;
-    ktx2 = new KTX2Loader().setTranscoderPath('/assets/basis/').setWorkerLimit(2).detectSupport(renderer);
-    draco = new DRACOLoader().setDecoderPath('/assets/draco/').setWorkerLimit(2);
+    ktx2 = new KTX2Loader().setTranscoderPath(assetUrl('/assets/basis/')).setWorkerLimit(2).detectSupport(renderer);
+    draco = new DRACOLoader().setDecoderPath(assetUrl('/assets/draco/')).setWorkerLimit(2);
 }
 
 export function getKTX2() { return ktx2; }

@@ -2,6 +2,7 @@ import * as THREE from '/node_modules/three/build/three.module.js';
 import { clone as skeletonClone } from '/node_modules/three/examples/jsm/utils/SkeletonUtils.js';
 import { makeGLTFLoader } from '../environments/AssetLoaders.js';
 import { createWeaponModel, hasWeaponModel } from '../weapons/WeaponModels.js';
+import { assetUrl } from '../utils/assetUrl.js';
 
 /**
  * Character system.
@@ -31,7 +32,7 @@ export function loadCharacters() {
         for (const name of ['soldier', 'army1', 'army2']) {
             try {
                 // offline-reduced LOD (tools/simplify-characters.mjs, ~4.5-5.5k tris), else the original (~10-12k)
-                const gl = await loader.loadAsync(`/assets/models/characters/${name}_lod.glb`).catch(() => loader.loadAsync(`/assets/models/characters/${name}.glb`));
+                const gl = await loader.loadAsync(assetUrl(`/assets/models/characters/${name}_lod.glb`)).catch(() => loader.loadAsync(assetUrl(`/assets/models/characters/${name}.glb`)));
                 T[name] = name === 'soldier' ? prepSkinned(gl.scene) : prepStatic(gl.scene, name);
             } catch (e) { console.warn('Character failed to load:', name, e); }
         }

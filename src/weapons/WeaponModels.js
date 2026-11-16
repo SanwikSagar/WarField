@@ -3,6 +3,7 @@ import { makeGLTFLoader } from '../environments/AssetLoaders.js';
 import { mergeByMaterial } from '../render/MeshMerge.js';
 import { gunMaterial, gunMaterialShared } from './GunMaterials.js';
 import { mergeGeometries } from '/node_modules/three/examples/jsm/utils/BufferGeometryUtils.js';
+import { assetUrl } from '../utils/assetUrl.js';
 
 // NPC (third-person) weapons never animate parts: merged once per id, shared by every soldier
 const tpMerged = new Map();
@@ -62,12 +63,12 @@ export function loadWeaponModels() {
         const L = makeGLTFLoader();
         await Promise.all(Object.entries(SPECS).map(async ([id, spec]) => {
             try {
-                const gl = await L.loadAsync(`/assets/models/weapons/${spec.file}.glb`);
+                const gl = await L.loadAsync(assetUrl(`/assets/models/weapons/${spec.file}.glb`));
                 templates[id] = prepare(gl.scene, spec);
             } catch (e) { console.warn('Weapon model failed:', id, e); }
             if (['urgi', 'm5scw', 'ak74m'].includes(id)) {
                 try {
-                    const lo = await L.loadAsync(`/assets/models/weapons/${spec.file}_tp.glb`);
+                    const lo = await L.loadAsync(assetUrl(`/assets/models/weapons/${spec.file}_tp.glb`));
                     lo.scene.traverse(o => { if (o.isMesh && !o.geometry.attributes.normal) o.geometry.computeVertexNormals(); });
                     tpTemplates[id] = prepare(lo.scene, spec);
                 } catch (e) { /* fall back to the full model */ }
