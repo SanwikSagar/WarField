@@ -98,12 +98,20 @@ export class LoadingScreen {
         return el;
     }
 
-    status(text) { const s = this.el && this.el.querySelector('#loading-status'); if (s && text != null) { s.textContent = text; s.style.color = ''; } }
-    progress(p) { const f = this.el && this.el.querySelector('#loading-fill'); if (f) f.style.width = `${Math.round(Math.max(0, Math.min(1, p)) * 100)}%`; }
+    status(text) {
+        const root = this.el || document.getElementById('loading-screen');
+        const s = root && root.querySelector('#loading-status');
+        if (s && text != null) { s.textContent = text; s.style.color = ''; }
+    }
+    progress(p) {
+        const root = this.el || document.getElementById('loading-screen');
+        const f = root && root.querySelector('#loading-fill');
+        if (f) f.style.width = `${Math.round(Math.max(0, Math.min(1, p)) * 100)}%`;
+    }
 
     /** Fade out and release everything (timers, animations, image references). */
     hide(delay = 0) {
-        const el = this.el;
+        const el = this.el || document.getElementById('loading-screen');
         this._stop();
         this.el = null;
         if (!el) return;

@@ -287,13 +287,11 @@ export class Game {
     }
 
     _hideLoading() {
-        loadingScreen.progress(1); loadingScreen.hide(400); return;
         const ls = document.getElementById('loading-screen');
-        const fill = document.getElementById('loading-fill');
+        const fill = ls && ls.querySelector('#loading-fill');
         if (fill) fill.style.width = '100%';
-        setTimeout(() => {
-            if (ls) { ls.classList.add('fade-out'); setTimeout(() => ls.remove(), 700); }
-        }, 400);
+        loadingScreen.progress(1);
+        loadingScreen.hide(400);
     }
 
     // ── MISSION LIFECYCLE ───────────────────────────────────────────────
