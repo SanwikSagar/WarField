@@ -15,7 +15,7 @@ export const BIOMES = {
     wildlands: {
         id: 'wildlands',
         name: 'Wildlands',
-        grade: { saturation: 0.94, contrast: 1.12, vignette: 0.62, tintShadow: [0.93, 1.0, 1.07], tintHigh: [1.03, 1.02, 0.97], bloom: 1.0, shafts: 0.12 },
+        grade: { saturation: 1.0, contrast: 1.04, vignette: 0.42, tintShadow: [0.98, 1.02, 0.96], tintHigh: [1.01, 1.02, 0.99], bloom: 0.9, shafts: 0.12 },
         bake: { ao: 0.85, shadow: 0.4, glow: 1.0, wet: 0.85, cloud: 0.2 },
         bounds: 88,
         rim: 15,
