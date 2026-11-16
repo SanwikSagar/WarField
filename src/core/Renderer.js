@@ -157,10 +157,7 @@ export function detectGPUTier() {
         const opts = { powerPreference: 'high-performance' };
         const gl = c.getContext('webgl2', opts) || c.getContext('webgl', opts);
         if (gl) {
-            const dbg = gl.getExtension('WEBGL_debug_renderer_info');
-            if (dbg) rendererStr = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '';
-            const loseCtx = gl.getExtension('WEBGL_lose_context');
-            if (loseCtx) loseCtx.loseContext();
+            rendererStr = gl.getParameter(gl.RENDERER) || '';
         }
     } catch (e) { /* ignore */ }
     const s = rendererStr.toLowerCase();

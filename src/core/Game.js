@@ -152,15 +152,17 @@ export class Game {
         this._bindGlobalEvents();
         this._hideLoading();
 
-        this.audio.init();
-        this.audio.startMusic('menu');
-        this.audio.startAmbience('rain', 0.12);
-
-        // Browsers suspend the AudioContext until a user gesture; unlock on
-        // the first click or keypress so menu/game audio actually plays.
-        const unlock = () => { this.audio.resume(); window.removeEventListener('pointerdown', unlock); window.removeEventListener('keydown', unlock); };
-        window.addEventListener('pointerdown', unlock);
-        window.addEventListener('keydown', unlock);
+        // Create the AudioContext only during a user gesture to satisfy autoplay policies.
+        const unlock = () => {
+            this.audio.init();
+            this.audio.resume();
+            this.audio.startMusic('menu');
+            this.audio.startAmbience('rain', 0.12);
+            window.removeEventListener('pointerdown', unlock, true);
+            window.removeEventListener('keydown', unlock, true);
+        };
+        window.addEventListener('pointerdown', unlock, { capture: true });
+        window.addEventListener('keydown', unlock, { capture: true });
 
         this.state = STATE.MENU;
         requestAnimationFrame(this.animate);

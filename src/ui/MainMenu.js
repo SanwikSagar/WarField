@@ -165,7 +165,15 @@ export class MainMenu {
             credits: 'The people and CC0 libraries behind the art, sound and models.',
             exit: 'Leave Warfield. Your progress is saved automatically.'
         }[item.dataset.action] || '';
-        if (d.textContent !== text) { d.classList.remove('in'); void d.offsetWidth; d.textContent = text; d.classList.add('in'); }
+        if (d.textContent !== text) {
+            cancelAnimationFrame(this._descFrame);
+            d.classList.remove('in');
+            d.textContent = text;
+            this._descFrame = requestAnimationFrame(() => {
+                d.classList.add('in');
+                this._descFrame = 0;
+            });
+        }
     }
 
     /** Footer: player ID + cloud save state, so the player can see their progress is safe. */
